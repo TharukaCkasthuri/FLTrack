@@ -19,7 +19,7 @@ writer = SummaryWriter()
 device = get_device()
 
 # Args
-data_path = "../kv/kv/"
+data_path = "../kv_data/kv/"
 checkpt_path = "checkpt/"
 epochs = 120
 

@@ -63,11 +63,17 @@ class Client:
         self.y_train = scaler_y.fit_transform(y_train.reshape(-1,1))
         self.y_test =  scaler_y.transform(y_test.reshape(-1,1))
         
-    def get_train(self):
-        return self.X_train, self.y_train
+    def get_x_train(self):
+        return self.X_train
     
-    def get_test(self):
-        return self.X_test, self.y_test
+    def get_y_train(self):
+       return self.y_train
+    
+    def get_x_test(self):
+        return self.X_test
+    
+    def get_y_test(self):
+       return self.y_test
     
     def get_dataset_size(self):
         return len(self.dataset)
@@ -96,11 +102,15 @@ class Client:
             loss.backward()
             optimizer.step()
 
-        print('Epoch: {} \t Client: {} \t[{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                    epoch+1, self.client_id, batch_idx * len(x), len(client_dl.dataset),
-                    100. * batch_idx / len(client_dl), loss.item()))
+            if batch_idx % 50 == 0:
+                print('Epoch: {} \t[{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                        epoch+1, batch_idx * len(x), len(client_dl.dataset),
+                        100. * batch_idx / len(client_dl), loss.item()))
                 
-        batch_loss.append(loss.item())
+            batch_loss.append(loss.item())
+            
+        loss_avg = sum(batch_loss)/len(batch_loss)
+        print('\nTrain loss:', loss_avg)
 
         return model.state_dict()
         
