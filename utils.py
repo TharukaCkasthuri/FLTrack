@@ -64,8 +64,10 @@ class Client:
 
         self.X_train = pd.DataFrame(scaler_x.fit_transform(
             X_train.values), index=X_train.index, columns=X_train.columns)
+        
         self.X_test = pd.DataFrame(scaler_x.transform(
             X_test.values), index=X_test.index, columns=X_test.columns)
+        
         self.y_train = scaler_y.fit_transform(y_train.reshape(-1, 1))
         self.y_test = scaler_y.transform(y_test.reshape(-1, 1))
 
@@ -108,8 +110,8 @@ class Client:
             optimizer.step()
 
             if batch_idx % 50 == 0:
-                print('Epoch: {} \t[{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                    epoch+1, batch_idx * len(x), len(client_dl.dataset),
+                print('Epoch: {} \tClient ID:{} \t[{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                    epoch+1,str(self.client_id) ,batch_idx * len(x), len(client_dl.dataset),
                     100. * batch_idx / len(client_dl), loss.item()))
 
             batch_loss.append(loss.item())
@@ -117,7 +119,11 @@ class Client:
         loss_avg = sum(batch_loss)/len(batch_loss)
         print('\nTrain loss:', loss_avg)
 
-        return model.state_dict(), loss_avg
+        return model, loss_avg
+    
+    def save_model(self, path):
+        saving_model = self.model.eval()
+        torch.save(saving_model.state_dict(), path)
 
     def eval(self, model):
         pass
