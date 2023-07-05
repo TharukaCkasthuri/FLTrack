@@ -1,57 +1,50 @@
 import os
 import torch
+import argparse
+
 from tqdm import tqdm
 
-from torch.utils.data import DataLoader
-
-from utils import Client, CustomDataSet
+from utils import Client
 from utils import load_file, get_device
-
-import torch.optim as optim
 
 from models import ShallowNN
 
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter()
-
-# Args
-path = "../kv_data/kv/"
-n_clients = 24
-
-files = os.listdir(path)
-files_path = [os.path.join(path, file) for file in files]
-
 device = get_device()
 
-uids = [u for u in range(n_clients)]
+parser = argparse.ArgumentParser(description="Federated training parameters")
+parser.add_argument("--batch_size",type=int, default=128)
+parser.add_argument("--epochs", type=int, default=1000)
+parser.add_argument("--learning_rate",type=float, default=0.00005)
+args = parser.parse_args()
 
-# Hype Parameters
-loss_fn = torch.nn.MSELoss()  # nn.MSELoss()
-batch_size = 128
+# Args
+data_path = "../kv_data/kv/"
+checkpt_path = "checkpt/"
+
 features = 197
 
-clients = [Client(i, load_file(files_path[i]))
-           for i in range(len(files_path))][0:1]
+# Hyper Parameters
+loss_fn = torch.nn.MSELoss() 
+batch_size = args.batch_size
+epochs = args.epochs
+learning_rate = args.learning_rate
 
-epochs = 10
-local_round_count = 10
-learning_rate = 0.00005
+writer = SummaryWriter(comment="_federated_training_batch_size_"+str(batch_size))
+
+files = os.listdir(data_path)
+files_path = [os.path.join(data_path, file) for file in files]
+clients = [Client(i+1, load_file(files_path[i])) for i in range(len(files_path))]
+
 
 # initiate global model
 global_model = ShallowNN(features)
 #global_model.to(device)
 global_model.train()
-
-# copy weights
 global_weights = global_model.state_dict()
-
-before = global_weights
-
 model_layers = global_model.track_layers.keys()
-print(model_layers)
 
-# info here - https://discuss.pytorch.org/t/how-to-change-weights-and-bias-nn-module-layers/93065/2
 
 for epoch in tqdm(range(epochs)):
 
@@ -75,22 +68,23 @@ for epoch in tqdm(range(epochs)):
         this_client_state_dict, client_loss = client.train(
             client.get_model(), loss_fn, optimizer, batch_size, epoch)
         local_models.append(this_client_state_dict)
-
-        """
+        
         writer.add_scalar("Client_"+str(client_id) +
                           " Training Loss", client_loss, epoch)
-        """
+        
         
     # update global model parameters here
     state_dicts = [model.state_dict() for model in local_models]
-
     for key in model_layers:
         global_model.track_layers[key].weight.data = torch.stack([item[str(key)+ ".weight"] for item in state_dicts]).mean(dim=0)
         global_model.track_layers[key].bias.data = torch.stack([item[str(key)+ ".bias"] for item in state_dicts]).mean(dim=0)
+        # info here - https://discuss.pytorch.org/t/how-to-change-weights-and-bias-nn-module-layers/93065/2
+
 
     global_weights = global_model.state_dict()
 
+writer.flush()
+writer.close()
 
-
-print(before)
-print(global_weights)
+global_model.eval()
+torch.save(global_model.state_dict(), checkpt_path+"_"+str(batch_size)+"_fedl_global.pth")

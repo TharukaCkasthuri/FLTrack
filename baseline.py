@@ -1,9 +1,9 @@
 import os
 import torch
+import argparse
 
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt 
 
 from tqdm import tqdm
 from torch.utils.data import DataLoader
@@ -11,23 +11,30 @@ from torch.utils.data import DataLoader
 from utils import Client, CustomDataSet
 from utils import load_file, get_device
 from models import ShallowNN
-from evals import test_inference
 
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter()
 device = get_device()
+
+parser = argparse.ArgumentParser(description="Baseline training parameters")
+parser.add_argument("--batch_size", type=int, default=128)
+parser.add_argument("--epochs", type=int, default=400)
+parser.add_argument("--learning_rate", type=float, default=0.00005)
+args = parser.parse_args()
 
 # Args
 data_path = "../kv_data/kv/"
 checkpt_path = "checkpt/"
-epochs = 120
+
+features = 197
 
 # Hyper Parameters
-loss_fn = torch.nn.MSELoss() #nn.MSELoss()
-batch_size = 128
-features = 197
-learning_rate= 0.00005
+loss_fn = torch.nn.MSELoss()
+batch_size = args.batch_size
+epochs = args.epochs
+learning_rate = args.learning_rate
+
+writer = SummaryWriter(comment="_baseline_training_batch_size_"+str(batch_size))
 
 #init data
 files = os.listdir(data_path)
@@ -40,20 +47,13 @@ y_train = np.concatenate(tuple([client.get_y_train() for client in clients]))
 train_dataset = CustomDataSet(x_train,y_train)
 trainloader = DataLoader(train_dataset,batch_size,shuffle=True)
 
-#test data
-x_test = pd.concat([client.get_x_test() for client in clients], axis=0,  ignore_index=True)
-y_test = np.concatenate(tuple([client.get_y_test() for client in clients]))
-test_dataset = CustomDataSet(x_test,y_test)
-testloader = DataLoader(test_dataset,batch_size,shuffle=True)
 
 #model setup
 model = ShallowNN(features)
-loss_fn = torch.nn.MSELoss()
 optimizer = torch.optim.SGD(model.parameters(),lr=learning_rate)
 
-epoch_loss = []
-
 for epoch in tqdm(range(epochs)):
+    print("\n")
     batch_loss = []
 
     for batch_idx, (x, y) in enumerate(trainloader):
@@ -72,16 +72,10 @@ for epoch in tqdm(range(epochs)):
 
     loss_avg = sum(batch_loss)/len(batch_loss)
     print('\nTrain loss:', loss_avg)
-    writer.add_scalar("Baseline Train Loss", loss_avg, epoch)
-    epoch_loss.append(loss_avg)
+    writer.add_scalar("Baseline Training Loss", loss_avg, epoch)
 
 writer.flush()
 writer.close()
 
 model.eval()
-torch.save(model.state_dict(), checkpt_path+"baseline.pth")
-
-loss, mse, mae = test_inference(model,testloader,loss_fn)
-print(loss)
-print(mse)
-print(mae)
+torch.save(model.state_dict(), checkpt_path+"_"+str(batch_size)+"_baseline.pth")

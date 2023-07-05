@@ -70,6 +70,7 @@ class Client:
         
         self.y_train = scaler_y.fit_transform(y_train.reshape(-1, 1))
         self.y_test = scaler_y.transform(y_test.reshape(-1, 1))
+        
 
     def get_x_train(self):
         return self.X_train
@@ -95,8 +96,9 @@ class Client:
     def get_model(self):
         return self.model
 
-    def train(self, model, loss_fn, optimizer, batch_size, epoch=0, parameters_dict=None):
+    def train(self, model, loss_fn, optimizer, batch_size, epoch=0):
 
+        #take this out of the function
         dataset = CustomDataSet(self.X_train, self.y_train)
         client_dl = DataLoader(dataset, batch_size, shuffle=True)
 
