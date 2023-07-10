@@ -4,11 +4,12 @@ import argparse
 
 from tqdm import tqdm
 from utils import Client
-from utils import load_file, get_device
+from utils import  get_device, evaluate
 
 from models import ShallowNN
 
 from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data import DataLoader
 
 device = get_device()
 
@@ -34,6 +35,9 @@ writer = SummaryWriter(comment="_federated_training_batch_size_"+str(batch_size)
 
 client_ids = ["0_0","0_1","0_2","0_3","0_4","0_5","1_0","1_1","1_2","1_3","1_4","1_5","2_0","2_1","2_2","2_3","2_4","2_5","3_0","3_1","3_2","3_3","3_4","3_5"]
 clients = [Client(id, torch.load("trainpt/"+id+".pt"), torch.load("testpt/"+id+".pt"), batch_size) for id in client_ids]
+
+test_dataset = torch.utils.data.ConcatDataset([torch.load("testpt/"+id+".pt") for id in client_ids])
+test_dataloader = DataLoader(test_dataset, batch_size, shuffle=True)
 
 # initiate global model
 global_model = ShallowNN(features)
@@ -65,10 +69,14 @@ for epoch in tqdm(range(epochs)):
         this_client_state_dict, client_loss = client.train(
             client_model, loss_fn, optimizer, epoch)
         local_models.append(this_client_state_dict)
+        local_loss.append(client_loss)
         
-        writer.add_scalar("Client_"+str(client_id) +
-                          " Training Loss", client_loss, epoch)
+        validation_loss = client.eval(client_model, loss_fn)
+
+        writer.add_scalars("Client_"+str(client_id) +
+                          "Loss", {"Training Loss":client_loss, "Validation Loss": validation_loss}, epoch)
         
+        validation_loss = client.eval(client_model, loss_fn)
         
     # update global model parameters here
     state_dicts = [model.state_dict() for model in local_models]
@@ -79,6 +87,13 @@ for epoch in tqdm(range(epochs)):
 
 
     global_weights = global_model.state_dict()
+
+    global_training_loss = sum(local_loss)/len(local_loss)
+    validation_loss, mse, _ = evaluate(global_model,test_dataloader,loss_fn)
+
+    writer.add_scalars('Global Model - Federated Learning', {'Training Loss': global_training_loss,
+                                    'Validation Loss': validation_loss,
+                                    'Validation MSE': mse}, epoch)
 
 writer.flush()
 writer.close()

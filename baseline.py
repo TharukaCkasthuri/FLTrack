@@ -72,7 +72,7 @@ for epoch in tqdm(range(epochs)):
 
     loss_avg = sum(batch_loss)/len(batch_loss)
     print('\nTrain loss:', loss_avg)
-    writer.add_scalar("Baseline Training Loss", loss_avg, epoch)
+    writer.add_scalar("Training Loss", loss_avg, epoch)
 
 writer.flush()
 writer.close()

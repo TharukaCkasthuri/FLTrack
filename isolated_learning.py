@@ -25,7 +25,7 @@ checkpt_path = "checkpt/isolated/"
 features = 197
 
 # Hyper Parameters
-loss_fn = torch.nn.MSELoss() 
+loss_fn = torch.nn.L1Loss() 
 batch_size = args.batch_size
 epochs = args.epochs
 learning_rate = args.learning_rate
@@ -38,7 +38,6 @@ client_ids = ["0_0","0_1","0_2","0_3","0_4","0_5","1_0","1_1","1_2","1_3","1_4",
 
 clients = [Client(id, torch.load("trainpt/"+id+".pt"), torch.load("testpt/"+id+".pt"), batch_size) for id in client_ids]
 
-
 for client in clients:
     client_id = client.client_id
     client.set_model(ShallowNN(features))
@@ -48,11 +47,16 @@ for client in clients:
     
     for epoch in tqdm(range(epochs)):
 
-        _ , client_loss = client.train(
+        client_model , train_loss = client.train(
             client.get_model(), loss_fn, optimizer, epoch)
         
-        writer.add_scalar("Client_"+str(client_id) +
-                          " Training Loss", client_loss, epoch)
+        validation_loss = client.eval(client_model, loss_fn)
+        print('Train loss:', train_loss)
+        print('Validation loss:', validation_loss,"\n")
+
+        writer.add_scalars("Client_"+str(client_id) +
+                          " Loss", {"Training Loss":train_loss, "Validation Loss": validation_loss}, epoch)
+        
         
     model_path =  checkpt_path + "client_" + str(client_id) +".pth"
     client.save_model(model_path)
