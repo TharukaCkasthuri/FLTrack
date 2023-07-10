@@ -3,7 +3,6 @@ import torch
 import argparse
 
 from tqdm import tqdm
-
 from utils import Client
 from utils import load_file, get_device
 
@@ -33,10 +32,8 @@ learning_rate = args.learning_rate
 
 writer = SummaryWriter(comment="_federated_training_batch_size_"+str(batch_size))
 
-files = os.listdir(data_path)
-files_path = [os.path.join(data_path, file) for file in files]
-clients = [Client(i+1, load_file(files_path[i])) for i in range(len(files_path))]
-
+client_ids = ["0_0","0_1","0_2","0_3","0_4","0_5","1_0","1_1","1_2","1_3","1_4","1_5","2_0","2_1","2_2","2_3","2_4","2_5","3_0","3_1","3_2","3_3","3_4","3_5"]
+clients = [Client(id, torch.load("trainpt/"+id+".pt"), torch.load("testpt/"+id+".pt"), batch_size) for id in client_ids]
 
 # initiate global model
 global_model = ShallowNN(features)
@@ -54,19 +51,19 @@ for epoch in tqdm(range(epochs)):
 
     for client in clients:
 
-        client_id = client.get_client_id()
-        client.set_model(ShallowNN(features))
+        client_id = client.client_id
+        client_model = ShallowNN(features)
 
         # loading the global model weights to client model
-        client.get_model().load_state_dict(global_weights)
+        client_model.load_state_dict(global_weights)
 
         # setting up the optimizer
         optimizer = torch.optim.SGD(
-            client.get_model().parameters(), lr=learning_rate)
+            client_model.parameters(), lr=learning_rate)
         
         # training
         this_client_state_dict, client_loss = client.train(
-            client.get_model(), loss_fn, optimizer, batch_size, epoch)
+            client_model, loss_fn, optimizer, epoch)
         local_models.append(this_client_state_dict)
         
         writer.add_scalar("Client_"+str(client_id) +
