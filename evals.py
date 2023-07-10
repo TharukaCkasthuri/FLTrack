@@ -10,16 +10,18 @@ def test_inference(model, test_dl, loss_fn):
 
     """
     model.eval()
-    loss, mse, mae = 0.0, 0.0, 0.0
+    loss, mse, mae = [], [], []
 
     for batch_idx, (x, y) in enumerate(test_dl):
         predicts = model(x)
         batch_loss = loss_fn(predicts,y)
-        loss += batch_loss.item()
+        loss.append(batch_loss.item())
         
         batch_mse = mean_squared_error(list(y), np.squeeze(predicts.detach().numpy()))
-        mse += batch_mse
+        mse.append(batch_mse)
         batch_mae = mean_absolute_error(list(y), np.squeeze(predicts.detach().numpy()))
-        mae += batch_mae
+        mae.append(batch_mae)
 
-    return loss, mse, mae
+    print(max(loss))
+    print(min(loss))
+    return sum(loss)/len(loss), sum(mse)/len(mse)

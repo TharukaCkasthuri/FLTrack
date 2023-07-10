@@ -34,10 +34,13 @@ writer = SummaryWriter(comment="_isolated_training_batch_size_"+str(batch_size))
 
 files = os.listdir(data_path)
 files_path = [os.path.join(data_path, file) for file in files]
-clients = [Client(i+1, load_file(files_path[i])) for i in range(len(files_path))]
+client_ids = ["0_0","0_1","0_2","0_3","0_4","0_5","1_0","1_1","1_2","1_3","1_4","1_5","2_0","2_1","2_2","2_3","2_4","2_5","3_0","3_1","3_2","3_3","3_4","3_5"]
+
+clients = [Client(id, torch.load("trainpt/"+id+".pt"), torch.load("testpt/"+id+".pt"), batch_size) for id in client_ids]
+
 
 for client in clients:
-    client_id = client.get_client_id()
+    client_id = client.client_id
     client.set_model(ShallowNN(features))
     
     optimizer = torch.optim.SGD(
@@ -45,8 +48,9 @@ for client in clients:
     
     for epoch in tqdm(range(epochs)):
 
-        client_model, client_loss = client.train(
-            client.get_model(), loss_fn, optimizer, batch_size, epoch)
+        _ , client_loss = client.train(
+            client.get_model(), loss_fn, optimizer, epoch)
+        
         writer.add_scalar("Client_"+str(client_id) +
                           " Training Loss", client_loss, epoch)
         

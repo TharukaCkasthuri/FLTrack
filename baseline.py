@@ -42,8 +42,8 @@ files_path = [os.path.join(data_path,file) for file in files]
 clients = [Client(i,load_file(files_path[i])) for i in range(len(files_path))]
 
 #train data
-x_train = pd.concat([client.get_x_train() for client in clients], axis=0,  ignore_index=True)
-y_train = np.concatenate(tuple([client.get_y_train() for client in clients]))
+x_train = pd.concat([client.X_train for client in clients], axis=0,  ignore_index=True)
+y_train = np.concatenate(tuple([client.y_train for client in clients]))
 train_dataset = CustomDataSet(x_train,y_train)
 trainloader = DataLoader(train_dataset,batch_size,shuffle=True)
 
