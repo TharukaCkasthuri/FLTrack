@@ -1,7 +1,11 @@
+import numpy as np
 import pandas as pd
 
 import torch
 from torch.utils.data import Dataset, DataLoader
+
+
+from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 def load_file(file_path):
     """
@@ -28,6 +32,25 @@ def load_file(file_path):
 
 def get_device():
     return torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+def evaluate(model, dataloader, loss_fn):
+    """
+    Evaluate the model. 
+    """
+    model.eval()
+    loss, mse, mae = [], [], []
+
+    for _, (x, y) in enumerate(dataloader):
+        predicts = model(x)
+        batch_loss = loss_fn(predicts,y)
+        loss.append(batch_loss.item())
+        
+        batch_mse = mean_squared_error(list(y), np.squeeze(predicts.detach().numpy()))
+        mse.append(batch_mse)
+        batch_mae = mean_absolute_error(list(y), np.squeeze(predicts.detach().numpy()))
+        mae.append(batch_mae)
+    
+    return sum(loss)/len(loss), sum(mse)/len(mse), sum(mae)/len(mae)
 
 
 class CustomDataSet(Dataset):
@@ -75,7 +98,6 @@ class Client:
             batch_loss.append(loss.item())
 
         loss_avg = sum(batch_loss)/len(batch_loss)
-        print('\nTrain loss:', loss_avg)
 
         return model, loss_avg
     
@@ -83,5 +105,14 @@ class Client:
         saving_model = self.model.eval()
         torch.save(saving_model.state_dict(), path)
 
-    def eval(self, model):
-        pass
+    def eval(self, model, loss_fn):
+
+        model.eval()
+        batch_loss = []
+        for _, (x,y) in enumerate(self.test_dataloader):
+            outputs = model(x)
+            loss = loss_fn(outputs,y)
+            batch_loss.append(loss.item())
+        loss_avg =  sum(batch_loss)/len(batch_loss)
+
+        return loss_avg
