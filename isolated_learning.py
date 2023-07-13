@@ -4,7 +4,7 @@ import argparse
 from tqdm import tqdm
 
 from utils import Client
-from utils import load_file, get_device
+from utils import get_device
 
 from models import ShallowNN
 
@@ -59,4 +59,5 @@ for client in clients:
         
         
     model_path =  checkpt_path + "client_" + str(client_id) +".pth"
-    client.save_model(model_path)
+    saving_model = client_model.eval()
+    torch.save(saving_model.state_dict(), model_path)

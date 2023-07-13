@@ -91,7 +91,7 @@ class Client:
             optimizer.step()
 
             if batch_idx % 50 == 0:
-                print('Epoch: {} \tClient ID:{} \t[{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                print('Epoch: {} \tClient ID:{} \t[{}/{} ({:.0f}%)] \tLoss: {:.6f}'.format(
                     epoch+1,str(self.client_id) ,batch_idx * len(x), len(self.train_dataloader.dataset),
                     100. * batch_idx / len(self.train_dataloader), loss.item()))
 
@@ -101,9 +101,6 @@ class Client:
 
         return model, loss_avg
     
-    def save_model(self, path):
-        saving_model = self.model.eval()
-        torch.save(saving_model.state_dict(), path)
 
     def eval(self, model, loss_fn):
 

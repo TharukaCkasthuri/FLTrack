@@ -74,7 +74,7 @@ for epoch in tqdm(range(epochs)):
         validation_loss = client.eval(client_model, loss_fn)
 
         writer.add_scalars("Client_"+str(client_id) +
-                          "Loss", {"Training Loss":client_loss, "Validation Loss": validation_loss}, epoch)
+                          " Loss", {"Training Loss":client_loss, "Validation Loss": validation_loss}, epoch)
         
         validation_loss = client.eval(client_model, loss_fn)
         
