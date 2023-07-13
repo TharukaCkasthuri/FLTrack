@@ -20,7 +20,6 @@ parser.add_argument("--learning_rate",type=float, default=0.00005)
 args = parser.parse_args()
 
 # Args
-data_path = "../kv_data/kv/"
 checkpt_path = "checkpt/"
 
 features = 197

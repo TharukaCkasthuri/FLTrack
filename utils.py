@@ -4,7 +4,6 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 def load_file(file_path):
@@ -73,12 +72,6 @@ class Client:
         self.train_dataloader = DataLoader(train_dataset, batch_size, shuffle=True)
         self.test_dataloader = DataLoader(test_dataset, batch_size, shuffle=True)
 
-    def set_model(self, model):
-        self.model = model
-
-    def get_model(self):
-        return self.model
-
     def train(self, model, loss_fn, optimizer, epoch=0):
 
         batch_loss = []
@@ -103,8 +96,6 @@ class Client:
     
 
     def eval(self, model, loss_fn):
-
-        model.eval()
         batch_loss = []
         for _, (x,y) in enumerate(self.test_dataloader):
             outputs = model(x)

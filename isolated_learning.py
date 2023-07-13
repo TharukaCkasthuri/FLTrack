@@ -15,7 +15,7 @@ device = get_device()
 parser = argparse.ArgumentParser(description="Isolated client training parameters")
 parser.add_argument("--batch_size", type=int, default=128)
 parser.add_argument("--epochs", type=int,  default=1000)
-parser.add_argument("--learning_rate", type=float, default=0.00005)
+parser.add_argument("--learning_rate", type=float, default=0.01)
 args = parser.parse_args()
 
 # Args
@@ -32,29 +32,28 @@ learning_rate = args.learning_rate
 
 writer = SummaryWriter(comment="_isolated_training_batch_size_"+str(batch_size))
 
-files = os.listdir(data_path)
-files_path = [os.path.join(data_path, file) for file in files]
 client_ids = ["0_0","0_1","0_2","0_3","0_4","0_5","1_0","1_1","1_2","1_3","1_4","1_5","2_0","2_1","2_2","2_3","2_4","2_5","3_0","3_1","3_2","3_3","3_4","3_5"]
 
 clients = [Client(id, torch.load("trainpt/"+id+".pt"), torch.load("testpt/"+id+".pt"), batch_size) for id in client_ids]
 
 for client in clients:
     client_id = client.client_id
-    client.set_model(ShallowNN(features))
+    client_model = ShallowNN(features)
     
     optimizer = torch.optim.SGD(
-            client.get_model().parameters(), lr=learning_rate)
+            client_model.parameters(), lr=learning_rate)
     
     for epoch in tqdm(range(epochs)):
 
         client_model , train_loss = client.train(
-            client.get_model(), loss_fn, optimizer, epoch)
+            client_model, loss_fn, optimizer, epoch)
         
         validation_loss = client.eval(client_model, loss_fn)
         print('Train loss:', train_loss)
         print('Validation loss:', validation_loss,"\n")
 
-        writer.add_scalars("Client_"+str(client_id) +
+        if epoch >= 5:
+            writer.add_scalars("Client_"+str(client_id) +
                           " Loss", {"Training Loss":train_loss, "Validation Loss": validation_loss}, epoch)
         
         
