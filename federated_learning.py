@@ -20,7 +20,6 @@ parser.add_argument("--learning_rate",type=float, default=0.00005)
 args = parser.parse_args()
 
 # Args
-data_path = "../kv_data/kv/"
 checkpt_path = "checkpt/"
 
 features = 197
@@ -74,7 +73,7 @@ for epoch in tqdm(range(epochs)):
         validation_loss = client.eval(client_model, loss_fn)
 
         writer.add_scalars("Client_"+str(client_id) +
-                          "Loss", {"Training Loss":client_loss, "Validation Loss": validation_loss}, epoch)
+                          " Loss", {"Training Loss":client_loss, "Validation Loss": validation_loss}, epoch)
         
         validation_loss = client.eval(client_model, loss_fn)
         

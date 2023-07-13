@@ -36,43 +36,56 @@ learning_rate = args.learning_rate
 
 writer = SummaryWriter(comment="_baseline_training_batch_size_"+str(batch_size))
 
-#init data
-files = os.listdir(data_path)
-files_path = [os.path.join(data_path,file) for file in files]
-clients = [Client(i,load_file(files_path[i])) for i in range(len(files_path))]
+client_ids = ["0_0","0_1","0_2","0_3","0_4","0_5","1_0","1_1","1_2","1_3","1_4","1_5","2_0","2_1","2_2","2_3","2_4","2_5","3_0","3_1","3_2","3_3","3_4","3_5"]
+
+#test data
+train_dataset = torch.utils.data.ConcatDataset([torch.load("trainpt/"+id+".pt") for id in client_ids])
+train_dataloader = DataLoader(train_dataset, batch_size, shuffle=True)
 
 #train data
-x_train = pd.concat([client.X_train for client in clients], axis=0,  ignore_index=True)
-y_train = np.concatenate(tuple([client.y_train for client in clients]))
-train_dataset = CustomDataSet(x_train,y_train)
-trainloader = DataLoader(train_dataset,batch_size,shuffle=True)
-
+test_dataset = torch.utils.data.ConcatDataset([torch.load("testpt/"+id+".pt") for id in client_ids])
+test_dataloader = DataLoader(test_dataset, batch_size, shuffle=True)
 
 #model setup
 model = ShallowNN(features)
+model.train()
 optimizer = torch.optim.SGD(model.parameters(),lr=learning_rate)
 
 for epoch in tqdm(range(epochs)):
     print("\n")
-    batch_loss = []
+    train_batch_loss = []
 
-    for batch_idx, (x, y) in enumerate(trainloader):
+    for batch_idx, (x, y) in enumerate(train_dataloader):
         outputs = model(x)
-        loss = loss_fn(outputs, y)
+        train_loss = loss_fn(outputs, y)
         model.zero_grad()
-        loss.backward()
+        train_loss.backward()
         optimizer.step()
         
         if batch_idx % 50 == 0:
                 print('Epoch: {} \t[{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                    epoch+1, batch_idx * len(x), len(trainloader.dataset),
-                    100. * batch_idx / len(trainloader), loss.item()))
+                    epoch+1, batch_idx * len(x), len(train_dataloader.dataset),
+                    100. * batch_idx / len(train_dataloader), train_loss.item()))
                 
-        batch_loss.append(loss.item())
+        train_batch_loss.append(train_loss.item())
 
-    loss_avg = sum(batch_loss)/len(batch_loss)
-    print('\nTrain loss:', loss_avg)
-    writer.add_scalar("Training Loss", loss_avg, epoch)
+    train_loss_avg = sum(train_batch_loss)/len(train_batch_loss)
+    print('\nTrain loss:', train_loss_avg)
+
+    val_batch_loss = []
+    for _, (x,y) in enumerate(test_dataloader):
+        outputs = model(x)
+        val_loss = loss_fn(outputs,y)
+        val_batch_loss.append(val_loss.item())
+
+    val_loss_avg =  sum(val_batch_loss)/len(val_batch_loss)
+    print('Validation loss:', val_loss_avg)
+
+    writer.add_scalars("Baseline Model", {"Training Loss":train_loss_avg, "Validation Loss":val_loss_avg}, epoch)
+
+
+
+
 
 writer.flush()
 writer.close()
