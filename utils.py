@@ -42,11 +42,11 @@ def evaluate(model, dataloader, loss_fn):
     for _, (x, y) in enumerate(dataloader):
         predicts = model(x)
         batch_loss = loss_fn(predicts,y)
-        loss.append(batch_loss.item())
         
-        batch_mse = mean_squared_error(list(y), np.squeeze(predicts.detach().numpy()))
+        loss.append(batch_loss.item())
+        batch_mse = mean_squared_error(y, np.squeeze(predicts.detach().numpy()))
         mse.append(batch_mse)
-        batch_mae = mean_absolute_error(list(y), np.squeeze(predicts.detach().numpy()))
+        batch_mae = mean_absolute_error(y, np.squeeze(predicts.detach().numpy()))
         mae.append(batch_mae)
     
     return sum(loss)/len(loss), sum(mse)/len(mse), sum(mae)/len(mae)
