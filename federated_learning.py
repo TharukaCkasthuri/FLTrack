@@ -84,15 +84,14 @@ for epoch in tqdm(range(epochs)):
         global_model.track_layers[key].bias.data = torch.stack([item[str(key)+ ".bias"] for item in state_dicts]).mean(dim=0)
         # info here - https://discuss.pytorch.org/t/how-to-change-weights-and-bias-nn-module-layers/93065/2
 
-
+    
     global_weights = global_model.state_dict()
-
+    
     global_training_loss = sum(local_loss)/len(local_loss)
     validation_loss, mse, _ = evaluate(global_model,test_dataloader,loss_fn)
 
     writer.add_scalars('Global Model - Federated Learning', {'Training Loss': global_training_loss,
-                                    'Validation Loss': validation_loss,
-                                    'Validation MSE': mse}, epoch)
+                                    'Validation Loss': validation_loss}, epoch)
 
 writer.flush()
 writer.close()
