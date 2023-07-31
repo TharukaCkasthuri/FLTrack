@@ -5,9 +5,9 @@ class ShallowNN(torch.nn.Module):
         super(ShallowNN, self).__init__()
         self.layer_1 = torch.nn.Linear(feats,64)
         self.relu_1 = torch.nn.ReLU()
-        self.layer_2 = torch.nn.Linear(64,32)
+        self.layer_2 = torch.nn.Linear(64,64)
         self.relu_2 = torch.nn.ReLU()
-        self.layer_3 = torch.nn.Linear(32, 1)
+        self.layer_3 = torch.nn.Linear(64, 1)
         self.track_layers = {"layer_1" : self.layer_1, "layer_2": self.layer_2, "layer_3": self.layer_3}
         
         

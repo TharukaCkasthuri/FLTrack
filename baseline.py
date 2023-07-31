@@ -17,9 +17,9 @@ from torch.utils.tensorboard import SummaryWriter
 device = get_device()
 
 parser = argparse.ArgumentParser(description="Baseline training parameters")
-parser.add_argument("--batch_size", type=int, default=128)
+parser.add_argument("--batch_size", type=int, default=64)
 parser.add_argument("--epochs", type=int, default=400)
-parser.add_argument("--learning_rate", type=float, default=0.00005)
+parser.add_argument("--learning_rate", type=float, default=0.005)
 args = parser.parse_args()
 
 # Args

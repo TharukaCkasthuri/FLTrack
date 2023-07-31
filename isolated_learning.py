@@ -1,11 +1,9 @@
-import os
 import torch
 import argparse
 from tqdm import tqdm
 
 from utils import Client
 from utils import get_device
-
 from models import ShallowNN
 
 from torch.utils.tensorboard import SummaryWriter
@@ -13,9 +11,9 @@ from torch.utils.tensorboard import SummaryWriter
 device = get_device()
 
 parser = argparse.ArgumentParser(description="Isolated client training parameters")
-parser.add_argument("--batch_size", type=int, default=128)
-parser.add_argument("--epochs", type=int,  default=1000)
-parser.add_argument("--learning_rate", type=float, default=0.01)
+parser.add_argument("--batch_size", type=int, default=64)
+parser.add_argument("--epochs", type=int,  default=500)
+parser.add_argument("--learning_rate", type=float, default=0.005)
 args = parser.parse_args()
 
 # Args
@@ -30,7 +28,7 @@ batch_size = args.batch_size
 epochs = args.epochs
 learning_rate = args.learning_rate
 
-writer = SummaryWriter(comment="_isolated_training_batch_size_"+str(batch_size))
+writer = SummaryWriter(comment="_iso_train_batch_"+str(batch_size))
 
 client_ids = ["0_0","0_1","0_2","0_3","0_4","0_5","1_0","1_1","1_2","1_3","1_4","1_5","2_0","2_1","2_2","2_3","2_4","2_5","3_0","3_1","3_2","3_3","3_4","3_5"]
 
@@ -52,9 +50,7 @@ for client in clients:
         print('Train loss:', train_loss)
         print('Validation loss:', validation_loss,"\n")
 
-        if epoch >= 5:
-            writer.add_scalars("Client_"+str(client_id) +
-                          " Loss", {"Training Loss":train_loss, "Validation Loss": validation_loss}, epoch)
+        writer.add_scalars(str(client_id), {"Training Loss":train_loss, "Validation Loss": validation_loss}, epoch)
         
         
     model_path =  checkpt_path + "client_" + str(client_id) +".pth"
