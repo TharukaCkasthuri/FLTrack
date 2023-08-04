@@ -2,6 +2,7 @@ import os
 import torch
 
 import pandas as pd
+import numpy as np
 
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import StandardScaler
@@ -44,6 +45,10 @@ def build_dataset(dataframe, client_id):
     --------
     None
     """
+
+    for c in dataframe.columns:
+        dataframe[c] = dataframe[c].apply(lambda a: np.ma.log(a))
+        print(str(c) + "done")
 
     X = dataframe.drop(columns=["label"])
     y = dataframe["label"].values
