@@ -2,6 +2,8 @@ import os
 import torch
 import argparse
 
+import pandas as pd
+
 from tqdm import tqdm
 from utils import Client
 from utils import  get_device, evaluate
@@ -15,7 +17,7 @@ device = get_device()
 
 parser = argparse.ArgumentParser(description="Federated training parameters")
 parser.add_argument("--batch_size",type=int, default=64)
-parser.add_argument("--epochs", type=int, default=1000)
+parser.add_argument("--epochs", type=int, default=50)
 parser.add_argument("--learning_rate",type=float, default=0.005)
 args = parser.parse_args()
 
@@ -25,7 +27,7 @@ checkpt_path = "checkpt/"
 features = 197
 
 # Hyper Parameters
-loss_fn = torch.nn.MSELoss() 
+loss_fn = torch.nn.L1Loss() 
 batch_size = args.batch_size
 epochs = args.epochs
 learning_rate = args.learning_rate
@@ -49,7 +51,7 @@ global_model.train()
 global_weights = global_model.state_dict()
 model_layers = global_model.track_layers.keys()
 
-    
+training_stats = []   
 for epoch in tqdm(range(epochs)):
 
     local_models, local_loss = [], []
@@ -59,7 +61,7 @@ for epoch in tqdm(range(epochs)):
     for client in clients:
 
         client_id = client.client_id
-        #client_model = ShallowNN(features)
+        training_stat_dict = {"client_id": client_id, "training_round": epoch}
 
         # loading the global model weights to client model
         client_model_dict[client_id].load_state_dict(global_weights)
@@ -69,17 +71,17 @@ for epoch in tqdm(range(epochs)):
             client_model_dict[client_id].parameters(), lr=learning_rate)
         
         # training
-        this_client_state_dict, client_loss = client.train(
+        this_client_state_dict, training_loss = client.train(
             client_model_dict[client_id], loss_fn, optimizer, epoch)
         local_models.append(this_client_state_dict)
-        local_loss.append(client_loss)
+        local_loss.append(training_loss)
         
+        training_stat_dict["fed_train"] = training_loss
         validation_loss = client.eval(client_model_dict[client_id], loss_fn)
+        training_stat_dict["fed_val"] = validation_loss
 
-        writer.add_scalars(str(client_id), {"Training Loss":client_loss, "Validation Loss": validation_loss}, epoch)
-        
-        validation_loss = client.eval(client_model_dict[client_id], loss_fn)
-        
+        training_stats.append(training_stat_dict)  
+
     # update global model parameters here
     state_dicts = [model.state_dict() for model in local_models]
     for key in model_layers:
@@ -87,17 +89,17 @@ for epoch in tqdm(range(epochs)):
         global_model.track_layers[key].bias.data = torch.stack([item[str(key)+ ".bias"] for item in state_dicts]).mean(dim=0)
         # info here - https://discuss.pytorch.org/t/how-to-change-weights-and-bias-nn-module-layers/93065/2
 
-    
     global_weights = global_model.state_dict()
     
     global_training_loss = sum(local_loss)/len(local_loss)
-    validation_loss, mse, _ = evaluate(global_model,test_dataloader,loss_fn)
+    global_validation_loss, mse, _ = evaluate(global_model,test_dataloader,loss_fn)
 
     writer.add_scalars('Global Model - Federated Learning', {'Training Loss': global_training_loss,
-                                    'Validation Loss': validation_loss}, epoch)
-
+                                    'Validation Loss': global_validation_loss}, epoch)
+stats_dataframe =  pd.DataFrame.from_dict(training_stats).to_csv("losses/fed_learning_stats_"+str(batch_size)+".csv", index=False)
 writer.flush()
 writer.close()
 
-global_model.eval()
+#global_model.eval()
 torch.save(global_model.state_dict(), checkpt_path+"_"+str(batch_size)+"_fedl_global.pth")
+

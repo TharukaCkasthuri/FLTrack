@@ -1,2 +1,5 @@
 __pycache__/
 __runs__/
+__losses__/
+
+*.ipynb
