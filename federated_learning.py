@@ -17,7 +17,7 @@ device = get_device()
 
 parser = argparse.ArgumentParser(description="Federated training parameters")
 parser.add_argument("--batch_size",type=int, default=64)
-parser.add_argument("--epochs", type=int, default=50)
+parser.add_argument("--epochs", type=int, default=200)
 parser.add_argument("--learning_rate",type=float, default=0.005)
 args = parser.parse_args()
 
@@ -27,7 +27,7 @@ checkpt_path = "checkpt/"
 features = 197
 
 # Hyper Parameters
-loss_fn = torch.nn.L1Loss() 
+loss_fn = torch.nn.MSELoss() 
 batch_size = args.batch_size
 epochs = args.epochs
 learning_rate = args.learning_rate
@@ -96,6 +96,7 @@ for epoch in tqdm(range(epochs)):
 
     writer.add_scalars('Global Model - Federated Learning', {'Training Loss': global_training_loss,
                                     'Validation Loss': global_validation_loss}, epoch)
+
 stats_dataframe =  pd.DataFrame.from_dict(training_stats).to_csv("losses/fed_learning_stats_"+str(batch_size)+".csv", index=False)
 writer.flush()
 writer.close()
