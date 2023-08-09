@@ -1,5 +1,5 @@
 __pycache__/
-__runs__/
-__losses__/
+runs/
+.ipynb_checkpoints/
 
 *.ipynb
