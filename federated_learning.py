@@ -51,7 +51,8 @@ global_model.train()
 global_weights = global_model.state_dict()
 model_layers = global_model.track_layers.keys()
 
-training_stats = []   
+training_stats = []
+   
 for epoch in tqdm(range(epochs)):
 
     local_models, local_loss = [], []
