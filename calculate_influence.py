@@ -25,8 +25,13 @@ class Federation():
 
         self.writer = SummaryWriter(comment="_fed_train_batch"+str(batch_size))
 
-    def set_clients(self):
+    def set_clients(self,skips:list=[]):
         self.client_ids = ["0_0","0_1","0_2","0_3","0_4","0_5","1_0","1_1","1_2","1_3","1_4","1_5","2_0","2_1","2_2","2_3","2_4","2_5","3_0","3_1","3_2","3_3","3_4","3_5"]
+
+        self.skipped = '_'.join(skips)
+        for item in skips:
+            self.client_ids.remove(item)
+
         self.clients = [Client(id, torch.load("trainpt/"+id+".pt"), torch.load("testpt/"+id+".pt"), batch_size) for id in self.client_ids]
 
         self.client_model_dict = {}
@@ -36,7 +41,7 @@ class Federation():
         test_dataset = torch.utils.data.ConcatDataset([torch.load("testpt/"+id+".pt") for id in self.client_ids])
         self.test_dataloader = DataLoader(test_dataset, batch_size, shuffle=True)
 
-    def train(self, model, summery = False):
+    def train(self, model):
 
         # initiate global model
         global_model = model(self.features)
@@ -85,16 +90,11 @@ class Federation():
 
             global_weights = global_model.state_dict()
 
-            if summery:
-                global_training_loss = sum(local_loss)/len(local_loss)
-                global_validation_loss, _, _ = evaluate(global_model,self.test_dataloader,loss_fn)
-
-                self.writer.add_scalars('Global Model - Federated Learning', {'Training Loss': global_training_loss,
-                                        'Validation Loss': global_validation_loss}, epoch)
+        return self.training_stats
             
 
     def save_stats(self):
-        pd.DataFrame.from_dict(self.training_stats).to_csv("losses/fed_learning_stats_"+str(epochs)+".csv", index=False)
+        stats_dataframe =  pd.DataFrame.from_dict(self.training_stats).to_csv("losses/influence/"+str(self.skipped)+"_fed_learning_stats_"+str(batch_size)+".csv", index=False)
 
 
    
@@ -117,14 +117,11 @@ if __name__ == "__main__":
     learning_rate = args.learning_rate
 
     fed = Federation(checkpt_path, features, loss_fn, batch_size, epochs, learning_rate)
+    skips_list = ["0_1"]
 
-    start = time.time()
-    fed.set_clients()
-    fed.train(ShallowNN,True)
-    fed.save_stats()
-    print(start-time.time())
-
-
-class Influence(Federation):
-
-    def __init__(self, )
+    for item in skips_list:
+        start = time.time()
+        fed.set_clients(skips=[item])
+        fed.train(ShallowNN)
+        fed.save_stats()
+        print(start-time.time())
