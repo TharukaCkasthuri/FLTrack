@@ -1,6 +1,13 @@
 import torch
 
 class ShallowNN(torch.nn.Module):
+    """
+    Shallow Nueral Network model with three layers.
+    
+    Parameters:
+    ------------
+    feats: int; number of features
+    """
     def __init__(self,feats):
         super(ShallowNN, self).__init__()
         self.layer_1 = torch.nn.Linear(feats,64)
@@ -12,6 +19,17 @@ class ShallowNN(torch.nn.Module):
         
         
     def forward(self, inputs):
+        """
+        Forward pass.
+        
+        Parameters:
+        ------------
+        inputs: torch.tensor object; input data
+        
+        Returns:
+        ------------
+        x: torch.tensor object; output data
+        """
         x = self.relu_1(self.layer_1(inputs))
         x = self.relu_2(self.layer_2(x))
         x = self.layer_3(x)        
