@@ -38,7 +38,20 @@ def get_device():
 
 def evaluate(model, dataloader, loss_fn):
     """
-    Evaluate the model. 
+    Evaluate the model with validation dataset.
+
+    Parameters:
+    --------
+    model:
+    dataloader:
+    loss_fn:
+
+    Returns:
+    --------
+    loss: 
+    mse:
+    mae:
+ 
     """
     model.eval()
     loss, mse, mae = [], [], []
@@ -57,6 +70,8 @@ def evaluate(model, dataloader, loss_fn):
 
 
 def calculate_hessian(model, loss_fn, data_loader):
+    """
+    """
     model.eval()
 
     total_loss = 0

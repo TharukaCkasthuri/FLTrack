@@ -26,17 +26,21 @@ class Federation():
         self.writer = SummaryWriter(comment="_fed_train_batch"+str(batch_size))
 
     def set_clients(self,client_ids):
+        """
+        """
         self.client_ids = client_ids
-        self.clients = [Client(id, torch.load("trainpt/"+id+".pt"), torch.load("testpt/"+id+".pt"), batch_size) for id in self.client_ids]
+        self.clients = [Client(id, torch.load("trainpt/"+id+".pt"), torch.load("testpt/"+id+".pt"), self.batch_size) for id in self.client_ids]
 
         self.client_model_dict = {}
         for i in self.client_ids:
-            self.client_model_dict[i] = ShallowNN(features) 
+            self.client_model_dict[i] = ShallowNN(self.features) 
 
         test_dataset = torch.utils.data.ConcatDataset([torch.load("testpt/"+id+".pt") for id in self.client_ids])
-        self.test_dataloader = DataLoader(test_dataset, batch_size, shuffle=True)
+        self.test_dataloader = DataLoader(test_dataset, self.batch_size, shuffle=True)
 
     def train(self, model, summery = False):
+        """
+        """
 
         # initiate global model
         global_model = model(self.features)
@@ -47,7 +51,7 @@ class Federation():
         model_layers = global_model.track_layers.keys()
 
         training_stats = []   
-        for epoch in tqdm(range(epochs)):
+        for epoch in tqdm(range(self.epochs)):
             local_models, local_loss = [], []
 
             print(f'\n | Global Training Round : {epoch+1} |\n')
@@ -62,16 +66,16 @@ class Federation():
 
                 # setting up the optimizer
                 optimizer = torch.optim.SGD(
-                    self.client_model_dict[client_id].parameters(), lr=learning_rate)
+                    self.client_model_dict[client_id].parameters(), lr=self.learning_rate)
                 
                 # training
                 this_client_state_dict, training_loss = client.train(
-                    self.client_model_dict[client_id], loss_fn, optimizer, epoch)
+                    self.client_model_dict[client_id], self.loss_fn, optimizer, epoch)
                 local_models.append(this_client_state_dict)
                 local_loss.append(training_loss)
                 
                 training_stat_dict["fed_train"] = training_loss
-                validation_loss = client.eval(self.client_model_dict[client_id], loss_fn)
+                validation_loss = client.eval(self.client_model_dict[client_id], self.loss_fn)
                 training_stat_dict["fed_val"] = validation_loss
 
                 training_stats.append(training_stat_dict)  
@@ -96,8 +100,10 @@ class Federation():
             
 
     def save_stats(self,model,training_stat,path_det:str=None):
-        stats_dataframe =  pd.DataFrame.from_dict(training_stat).to_csv("losses/" +path_det+ "_fed_learning_stats_epoch"+str(epochs)+".csv", index=False)
-        torch.save(model.state_dict(), checkpt_path + path_det+"_fedl_global_"+str(epochs)+".pth")
+        """
+        """
+        stats_dataframe =  pd.DataFrame.from_dict(training_stat).to_csv("losses/" +path_det+ "_fed_learning_stats_epoch"+str(self.epochs)+".csv", index=False)
+        torch.save(model.state_dict(), self.checkpt_path + path_det+"_fedl_global_"+str(self.epochs)+".pth")
 
 
    
