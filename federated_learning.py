@@ -147,7 +147,7 @@ class Federation():
         ----------------
         None
         """
-        stats_dataframe =  pd.DataFrame.from_dict(training_stat).to_csv("losses/" +path_det+ "_fed_learning_stats_epoch"+str(self.epochs)+".csv", index=False)
+        pd.DataFrame.from_dict(training_stat).to_csv("losses/" +path_det+ "_fed_learning_stats_epoch"+str(self.epochs)+".csv", index=False)
         torch.save(model.state_dict(), self.checkpt_path + path_det+"_fedl_global_"+str(self.epochs)+".pth")
 
 
