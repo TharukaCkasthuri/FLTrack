@@ -10,18 +10,16 @@ from sklearn.model_selection import train_test_split
 
 from utils import CustomDataSet
 
-def load_file(file_path):
+def load_file(file_path)->pd.DataFrame:
     """
     Loads the pickle file into a dataframe.
 
     Parameters:
-    --------
-    file_path:str
+    ------------
+    file_path: str; path to the pickle file
 
     Returns:
-    --------
-    df: Pandas Dataframe object
-
+    ------------
     """
     tmp = pd.read_pickle(file_path)
     df = pd.merge(left=tmp["dataset"]["X"], right=tmp["dataset"]
@@ -32,17 +30,17 @@ def load_file(file_path):
 
     return df
 
-def build_dataset(dataframe, client_id):
+def build_dataset(dataframe, client_id)->None:
     """
     Split the dataframe into train and test, saving as a pytorch dataset.
 
     Parameters:
-    --------
-    dataframe: Pandas dataframe object
-    client_id: String, Unique id
+    ------------
+    dataframe: pd.DataFrame object; dataframe to be split
+    client_id: str; client id
 
     Returns:
-    --------
+    ------------
     None
     """
 

@@ -30,7 +30,7 @@ if __name__ == "__main__":
     fed = Federation(checkpt_path, features, loss_fn, batch_size, epochs, learning_rate)
     client_ids = ["0_0","0_1","0_2","0_3","0_4","0_5","1_0","1_1","1_2","1_3","1_4","1_5","2_0","2_1","2_2","2_3","2_4","2_5","3_0","3_1","3_2","3_3","3_4","3_5"]
 
-    skips_list = ["2_0","2_1","2_2","2_3"]
+    skips_list = ["2_4","2_5","3_0","3_1","3_2","3_3","3_4","3_5"]
 
     print("Federation with clients " + ', '.join(client_ids))
 

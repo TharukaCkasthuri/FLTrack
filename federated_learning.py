@@ -3,17 +3,28 @@ import torch
 import argparse
 
 import pandas as pd
-
 from tqdm import tqdm
+
 from utils import Client
 from utils import  get_device, evaluate
-
 from models import ShallowNN
 
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 
 class Federation():
+    """
+    Class for federated learning.
+
+    Parameters:
+    ------------
+    checkpt_path: str; path to save the model
+    features: int; number of features
+    loss_fn: torch.nn.Module object; loss function
+    batch_size: int; batch size
+    epochs: int; number of epochs
+    learning_rate: float; learning rate
+    """
 
     def __init__(self, checkpt_path, features, loss_fn, batch_size, epochs, learning_rate):
         self.checkpt_path = checkpt_path
@@ -25,8 +36,17 @@ class Federation():
 
         self.writer = SummaryWriter(comment="_fed_train_batch"+str(batch_size))
 
-    def set_clients(self,client_ids):
+    def set_clients(self,client_ids)->None:
         """
+        Setting up the clients for federated learning.
+
+        Parameters:
+        ----------------
+        client_ids: list; list of client ids
+
+        Returns:
+        ----------------
+        None
         """
         self.client_ids = client_ids
         self.clients = [Client(id, torch.load("trainpt/"+id+".pt"), torch.load("testpt/"+id+".pt"), self.batch_size) for id in self.client_ids]
@@ -38,8 +58,19 @@ class Federation():
         test_dataset = torch.utils.data.ConcatDataset([torch.load("testpt/"+id+".pt") for id in self.client_ids])
         self.test_dataloader = DataLoader(test_dataset, self.batch_size, shuffle=True)
 
-    def train(self, model, summery = False):
+    def train(self, model, summery = False)->tuple:
         """
+        Training the model.
+
+        Parameters:
+        ----------------
+        model: model to be trained
+        summery: bool; whether to save the training stats and the model
+
+        Returns:
+        ----------------
+        global_model: trained model
+        training_stats: list; training stats
         """
 
         # initiate global model
@@ -96,13 +127,27 @@ class Federation():
                 self.writer.add_scalars('Global Model - Federated Learning', {'Training Loss': global_training_loss,
                                         'Validation Loss': global_validation_loss}, epoch)
 
+        self.writer.flush()
+        self.writer.close()
+
         return global_model, training_stats
             
 
-    def save_stats(self,model,training_stat,path_det:str=None):
+    def save_stats(self,model,training_stat,path_det:str=None)->None:
         """
+        Saving the training stats and the model.
+
+        Parameters:
+        ----------------
+        model: trained model
+        training_stat: list; training stats
+        path_det: str; path to save the model and the training stats
+
+        Returns:
+        ----------------
+        None
         """
-        stats_dataframe =  pd.DataFrame.from_dict(training_stat).to_csv("losses/" +path_det+ "_fed_learning_stats_epoch"+str(self.epochs)+".csv", index=False)
+        pd.DataFrame.from_dict(training_stat).to_csv("losses/" +path_det+ "_fed_learning_stats_epoch"+str(self.epochs)+".csv", index=False)
         torch.save(model.state_dict(), self.checkpt_path + path_det+"_fedl_global_"+str(self.epochs)+".pth")
 
 
@@ -135,5 +180,6 @@ if __name__ == "__main__":
     fed.set_clients(client_ids=client_ids)
     trained_model, training_stats = fed.train(ShallowNN)
     fed.save_stats(trained_model, training_stats)
-    print(str((time.time()-start)/60) + " minutes")
-        
+    print("Federation with clients " + ', '.join(client_ids))
+    print("Approximate time taken to train", str(round((time.time()-start)/60,2)) + " minutes")
+    
