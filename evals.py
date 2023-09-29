@@ -1,5 +1,6 @@
 import torch
 import time
+import collections
 
 import numpy as np
 
@@ -7,7 +8,6 @@ from typing import Callable
 from torch.autograd import grad
 
 from sklearn.metrics import mean_squared_error, mean_absolute_error
-
 from utils import get_all_possible_pairs
 
 
@@ -130,14 +130,23 @@ def influence_with_mae(model, influenced_model, data_loader) -> tuple:
 
     model.eval()
     influenced_model.eval()
-    model_pred = []
-    influenced_model_pred = []
+
+    influence = 0.0
 
     for _, (x, y) in enumerate(data_loader):
-        model_pred.append(model(x))
-        influenced_model_pred.append(influenced_model(x))
+        model_pred = model(x)
+        influenced_model_pred = influenced_model(x)
 
-    return model_pred, influenced_model_pred
+        batch_mae_model = mean_absolute_error(
+            y, np.squeeze(model_pred.detach().numpy())
+        )
+        batch_mae_influenced_model = mean_absolute_error(
+            y, np.squeeze(influenced_model_pred.detach().numpy())
+        )
+
+        influence += abs(batch_mae_model - batch_mae_influenced_model)
+
+    return influence
 
 
 def influence(model, influenced_model, val_set) -> float:
@@ -208,6 +217,28 @@ def euclidean_distance(x: torch.tensor, y: torch.tensor) -> torch.tensor:
     return distance
 
 
+def manhattan_distance(x: torch.tensor, y: torch.tensor) -> torch.tensor:
+    """Calculate the Manhattan distance between two matrices.
+
+    Parameters:
+    -------------
+    x: torch.tensor object; tensor 1
+    y: torch.tensor object; tensor 2
+
+    Returns:
+    -------------
+    distance: torch.tensor object; Manhattan distance between two matrices
+    """
+
+    # Calculate the absolute difference element-wise
+    absolute_difference = torch.abs(x - y)
+
+    # Sum the absolute differences along the appropriate dimension
+    distance = absolute_difference.sum(dim=1)
+
+    return distance
+
+
 def accumulated_proximity(
     x: torch.tensor, y: torch.tensor, distance_matrix: Callable
 ) -> torch.tensor:
@@ -226,6 +257,36 @@ def accumulated_proximity(
 
     distances = distance_matrix(x, y)
     proximity = torch.sum(distances)
+
+    return proximity
+
+
+def layerwise_proximity(
+    x: collections.OrderedDict,
+    y: collections.OrderedDict,
+    critarian: str,
+    distance_matrix,
+):
+    """
+    Calculate the layer-wise proximity between state dictionaries based on a critarian (layer bias or weights).
+
+    Parameters:
+    -------------
+    x: collections.OrderedDict; state dictionary 1
+    y: collections.OrderedDict; state dictionary 2
+    critarian: str; critarian to be evaluated, basically the layer name and specifying the weight or bias.
+    distance_matrix: Callable; distance matrix
+
+    Returns:
+    -------------
+    proximity: torch.tensor object; layer-wise proximity between state dictionaries
+    """
+    if critarian.split(".")[-1] == "bias":
+        proximity = accumulated_proximity(
+            x[critarian].view(1, -1), y[critarian].view(1, -1), distance_matrix
+        )
+    else:
+        proximity = accumulated_proximity(x[critarian], y[critarian], distance_matrix)
 
     return proximity
 
@@ -323,7 +384,6 @@ def calculate_hessian(model, loss_fn, data_loader) -> tuple:
     -------------
     hessian_matrix: torch.tensor object; Hessian matrix
     time: float; time taken to calculate the Hessian matrix
-
     """
     model.eval()
 
