@@ -6,7 +6,7 @@ import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 
 
-def load_file(file_path) -> pd.DataFrame:
+def load_file(file_path: str) -> pd.DataFrame:
     """
     Loads the pickle file into a dataframe.
 
@@ -67,7 +67,6 @@ def get_all_possible_pairs(client_ids: list) -> list:
 
 
 class CustomDataSet(Dataset):
-
     """
     Custom dataset class for the training and validation dataset.
     """
@@ -125,11 +124,11 @@ class Client:
         test_dataset: object,
         batch_size: int,
     ) -> None:
-        self.client_id = client_id
+        self.client_id: str = client_id
         self.train_dataloader = DataLoader(train_dataset, batch_size, shuffle=True)
         self.test_dataloader = DataLoader(test_dataset, batch_size, shuffle=True)
 
-    def train(self, model, loss_fn, optimizer, epoch=0) -> tuple:
+    def train(self, model, loss_fn, optimizer, epoch) -> tuple:
         """
         Training the model.
 
@@ -146,6 +145,7 @@ class Client:
         loss_avg: float; average loss
         """
         batch_loss = []
+        print(f"Client: {self.client_id} Started it's local training")
 
         for batch_idx, (x, y) in enumerate(self.train_dataloader):
             outputs = model(x)
@@ -156,14 +156,7 @@ class Client:
 
             if batch_idx % 200 == 0:
                 print(
-                    "Epoch: {} \tClient ID:{} \t[{}/{} ({:.0f}%)] \tLoss: {:.6f}".format(
-                        epoch + 1,
-                        str(self.client_id),
-                        batch_idx * len(x),
-                        len(self.train_dataloader.dataset),
-                        100.0 * batch_idx / len(self.train_dataloader),
-                        loss.item(),
-                    )
+                    f"Epoch: {epoch + 1} \tClient ID: {self.client_id} \t[{batch_idx * len(x)}/{len(self.train_dataloader.dataset)} ({100.0 * batch_idx / len(self.train_dataloader):.0f}%)] \tLoss: {loss.item():.6f}"
                 )
 
             batch_loss.append(loss.item())
