@@ -1,12 +1,15 @@
 import time
 import torch
 import argparse
+import os
 
 import pandas as pd
 from tqdm import tqdm
+from pyhessian import hessian
 
 from utils import Client
-from utils import get_device, evaluate
+from utils import get_device
+from evals import evaluate
 from models import ShallowNN
 
 from torch.utils.tensorboard import SummaryWriter
@@ -23,19 +26,26 @@ class Federation:
     features: int; number of features
     loss_fn: torch.nn.Module object; loss function
     batch_size: int; batch size
-    epochs: int; number of epochs
     learning_rate: float; learning rate
     """
 
     def __init__(
-        self, checkpt_path, features, loss_fn, batch_size, epochs, learning_rate
+        self,
+        checkpt_path: str,
+        features: int,
+        loss_fn,
+        batch_size,
+        learning_rate,
+        rounds,
+        epochs_per_round,
     ):
         self.checkpt_path = checkpt_path
         self.features = features
         self.loss_fn = loss_fn
         self.batch_size = batch_size
-        self.epochs = epochs
         self.learning_rate = learning_rate
+        self.training_rounds = rounds
+        self.epochs_per_round = epochs_per_round
 
         self.writer = SummaryWriter(comment="_fed_train_batch" + str(batch_size))
 
@@ -71,7 +81,31 @@ class Federation:
         )
         self.test_dataloader = DataLoader(test_dataset, self.batch_size, shuffle=True)
 
-    def train(self, model, summery=False) -> tuple:
+    def _eccentricity(self, vectors_dict: dict) -> dict:
+        """Calculate the eccentricity of list vectors.
+
+        Parameters:
+        ----------------
+        vectors_dict: dict; dictionary of vectors
+
+        Returns:
+        ----------------
+        eccentricity: dict; dictionary of eccentricity of the vectors
+        """
+        # calculate the euclidean distance between all posible pairs of the vectors
+        eccentricity = {}
+        for key in vectors_dict.keys():
+            eccentricity[key] = {}
+            for key_2 in vectors_dict.keys():
+                eccentricity[key][key_2] = torch.norm(
+                    vectors_dict[key] - vectors_dict[key_2]
+                )
+
+    def train(
+        self,
+        model,
+        summery=False,
+    ) -> tuple:
         """
         Training the model.
 
@@ -95,14 +129,14 @@ class Federation:
         model_layers = global_model.track_layers.keys()
 
         training_stats = []
-        for epoch in tqdm(range(self.epochs)):
+        for round in tqdm(range(self.training_rounds)):
             local_models, local_loss = [], []
 
-            print(f"\n | Global Training Round : {epoch+1} |\n")
+            print(f"\n | Global Training Round : {round+1} |\n")
 
             for client in self.clients:
                 client_id = client.client_id
-                training_stat_dict = {"client_id": client_id, "training_round": epoch}
+                training_stat_dict = {"client_id": client_id, "training_round": round}
 
                 # loading the global model weights to client model
                 self.client_model_dict[client_id].load_state_dict(global_weights)
@@ -113,14 +147,21 @@ class Federation:
                     lr=self.learning_rate,
                 )
 
-                # training
-                this_client_state_dict, training_loss = client.train(
-                    self.client_model_dict[client_id], self.loss_fn, optimizer, epoch
-                )
-                local_models.append(this_client_state_dict)
-                local_loss.append(training_loss)
+                # training the client model
+                for ep in range(self.epochs_per_round):
+                    this_client_state_dict, training_loss = client.train(
+                        self.client_model_dict[client_id],
+                        self.loss_fn,
+                        optimizer,
+                        ep,
+                    )
 
-                training_stat_dict["fed_train"] = training_loss
+                local_loss.append(training_loss)
+                local_models.append(this_client_state_dict)
+
+                training_stat_dict["fed_train"] = (
+                    sum(local_loss[-self.epochs_per_round :]) / self.epochs_per_round
+                )
                 validation_loss = client.eval(
                     self.client_model_dict[client_id], self.loss_fn
                 )
@@ -153,7 +194,7 @@ class Federation:
                         "Training Loss": global_training_loss,
                         "Validation Loss": global_validation_loss,
                     },
-                    epoch,
+                    round,
                 )
 
         self.writer.flush()
@@ -161,7 +202,7 @@ class Federation:
 
         return global_model, training_stats
 
-    def save_stats(self, model, training_stat, path_det: str = "") -> None:
+    def save_stats(self, model, training_stat) -> None:
         """
         Saving the training stats and the model.
 
@@ -175,75 +216,78 @@ class Federation:
         ----------------
         None
         """
-        path = str(
-            "losses/"
-            + path_det
-            + "_fed_learning_stats_epoch"
-            + str(self.epochs)
-            + ".csv"
-        )
-        pd.DataFrame.from_dict(training_stat).to_csv(
-            path,
-            index=False,
-        )
-        torch.save(
-            model.state_dict(),
-            self.checkpt_path + path_det + "_fedl_global_" + str(self.epochs) + ".pth",
-        )
+
+        path = f"losses/_federated_stats_epoch{self.training_rounds}_{self.epochs_per_round}.csv"
+
+        if os.path.exists(path):
+            pd.DataFrame.from_dict(training_stat).to_csv(
+                path,
+                index=False,
+            )
+        else:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            pd.DataFrame.from_dict(training_stat).to_csv(
+                path,
+                index=False,
+            )
+
+        if os.path.exists(self.checkpt_path):
+            torch.save(
+                model.state_dict(),
+                f"{self.checkpt_path}_fedl_global_{self.training_rounds}_{self.epochs_per_round}.pth",
+            )
+        else:
+            os.makedirs(os.path.dirname(self.checkpt_path), exist_ok=True)
+            torch.save(
+                model.state_dict(),
+                f"{self.checkpt_path}_fedl_global_{self.training_rounds}_{self.epochs_per_round}.pth",
+            )
 
 
 if __name__ == "__main__":
     device = get_device()
     parser = argparse.ArgumentParser(description="Federated training parameters")
     parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--epochs", type=int, default=500)
     parser.add_argument("--learning_rate", type=float, default=0.005)
+    parser.add_argument("--loss_function", type=str, default="L1Loss")
+    parser.add_argument("--log_summary", action="store_true")
+    parser.add_argument("--rounds", type=int, default=20)
+    parser.add_argument("--epochs_per_round", type=int, default=25)
+
     args = parser.parse_args()
 
-    checkpt_path = "checkpt/"
+    checkpt_path = (
+        f"checkpt/{args.rounds}_rounds_{args.epochs_per_round}_epochs_per_round/"
+    )
+
     features = 197
 
     # Hyper Parameters
-    loss_fn = torch.nn.L1Loss()
+    loss_fn = getattr(torch.nn, args.loss_function)()
     batch_size = args.batch_size
-    epochs = args.epochs
     learning_rate = args.learning_rate
+    log_summary = args.log_summary
+    rounds = args.rounds
+    epochs_per_round = args.epochs_per_round
 
-    fed = Federation(checkpt_path, features, loss_fn, batch_size, epochs, learning_rate)
+    federation = Federation(
+        checkpt_path,
+        features,
+        loss_fn,
+        batch_size,
+        learning_rate,
+        rounds,
+        epochs_per_round,
+    )
 
-    client_ids = [
-        "0_0",
-        "0_1",
-        "0_2",
-        "0_3",
-        "0_4",
-        "0_5",
-        "1_0",
-        "1_1",
-        "1_2",
-        "1_3",
-        "1_4",
-        "1_5",
-        "2_0",
-        "2_1",
-        "2_2",
-        "2_3",
-        "2_4",
-        "2_5",
-        "3_0",
-        "3_1",
-        "3_2",
-        "3_3",
-        "3_4",
-        "3_5",
-    ]
+    client_ids = [f"{i}_{j}" for i in range(4) for j in range(6)]
 
     print("Federation with clients " + ", ".join(client_ids))
 
     start = time.time()
-    fed.set_clients(client_ids=client_ids)
-    trained_model, training_stats = fed.train(ShallowNN)
-    fed.save_stats(trained_model, training_stats)
+    federation.set_clients(client_ids=client_ids)
+    trained_model, training_stats = federation.train(ShallowNN)
+    federation.save_stats(trained_model, training_stats)
     print("Federation with clients " + ", ".join(client_ids))
     print(
         "Approximate time taken to train",
