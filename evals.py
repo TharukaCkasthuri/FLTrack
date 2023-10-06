@@ -564,3 +564,37 @@ def layer_importance_bias(model, loss_fn, data_loader) -> dict:
         ) * 100
 
     return layer_importance_scores
+
+
+def calculate_contribution(local_models, model_layers):
+    # Initialize a dictionary to store the contributions
+    contributions = {}
+
+    # Get the state dicts for all local models
+    state_dicts = [model.state_dict() for model in local_models]
+
+    for key in model_layers:
+        weight_contributions = torch.stack(
+            [item[str(key) + ".weight"] for item in state_dicts]
+        )
+        bias_contributions = torch.stack(
+            [item[str(key) + ".bias"] for item in state_dicts]
+        )
+
+        # Calculate the mean contributions for weight and bias
+        mean_weight_contribution = weight_contributions.mean(dim=0)
+        mean_bias_contribution = bias_contributions.mean(dim=0)
+
+        # Store the contributions in a dictionary
+        contributions[key] = {
+            "weight": mean_weight_contribution,
+            "bias": mean_bias_contribution,
+        }
+
+    return contributions
+
+
+# Example usage:
+# local_models = [local_model1, local_model2, ...]  # List of local models
+# model_layers = ['layer1', 'layer2', ...]  # List of layers to consider
+# contributions = calculate_contribution(local_models, model_layers)
