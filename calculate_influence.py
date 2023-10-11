@@ -55,13 +55,11 @@ if __name__ == "__main__":
             client_ids.remove(item)
         except:
             raise ValueError
-        print("Federation with clients " + ", ".join(client_ids))
+        print(f"Federation with clients {', '.join(client_ids)}")
         fed.set_clients(client_ids=client_ids)
         trained_model, training_stats = fed.train(ShallowNN)
         fed.save_stats(trained_model, training_stats)
         times.append((time.time() - start))
 
-print(
-    "Approximate time taken to train",
-    str(round(sum(times) / len(times), 2)) + " minutes",
-)
+average_time = sum(times) / len(times)
+print(f"Approximate time taken to train: {average_time:.2f} minutes")
