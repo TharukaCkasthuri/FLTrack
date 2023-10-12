@@ -1,3 +1,4 @@
+"""The federated learning class."""
 import time
 import torch
 import argparse
@@ -5,7 +6,6 @@ import os
 
 import pandas as pd
 from tqdm import tqdm
-from pyhessian import hessian
 
 from utils import Client
 from utils import get_device
@@ -22,23 +22,46 @@ class Federation:
 
     Parameters:
     ------------
-    checkpt_path: str; path to save the model
-    features: int; number of features
-    loss_fn: torch.nn.Module object; loss function
-    batch_size: int; batch size
-    learning_rate: float; learning rate
+    checkpt_path: str;
+        Path to save the model
+    features: int;
+        Number of features in the input data.
+    loss_fn: torch.nn.Module object;
+        The loss function used for training.
+    batch_size: int;
+        The batch size for training.
+    learning_rate: float;
+        The learning rate for the optimizer.
+    rounds : int
+        The number of training rounds in federated learning.
+    epochs_per_round : int
+        The number of training epochs per round.
+
+    Methods:
+    ----------
+    __init__(self, checkpt_path: str, features: int, loss_fn, batch_size, learning_rate, rounds, epochs_per_round):
+        Initializes a Federation instance with the specified parameters.
+
+    set_clients(self, client_ids: list) -> None:
+        Sets up the clients for federated learning.
+
+    train(self, model, summery=False) -> tuple:
+        Trains the model using federated learning.
+
+    save_stats(self, model, training_stat: list) -> None:
+        Saves the training statistics and the model.
     """
 
     def __init__(
         self,
         checkpt_path: str,
         features: int,
-        loss_fn,
-        batch_size,
-        learning_rate,
-        rounds,
-        epochs_per_round,
-    ):
+        loss_fn: torch.nn.Module,
+        batch_size: int,
+        learning_rate: float,
+        rounds: int,
+        epochs_per_round: int,
+    ) -> None:
         self.checkpt_path = checkpt_path
         self.features = features
         self.loss_fn = loss_fn
@@ -55,7 +78,8 @@ class Federation:
 
         Parameters:
         ----------------
-        client_ids: list; list of client ids
+        client_ids: list;
+            List of client ids
 
         Returns:
         ----------------
@@ -83,21 +107,25 @@ class Federation:
 
     def train(
         self,
-        model,
-        summery=False,
+        model: torch.nn.Module,
+        summery: bool = False,
     ) -> tuple:
         """
         Training the model.
 
         Parameters:
         ----------------
-        model: model to be trained
-        summery: bool; whether to save the training stats and the model
+        model:torch.nn.Module;
+            Model to be trained. The model should have a track_layers attribute which is a dictionary of the layers to be trained.
+        summery: bool;
+            Whether to save the training stats and the model. Default is False.
 
         Returns:
         ----------------
-        global_model: trained model
-        training_stats: list; training stats
+        global_model:torch.nn.Module;
+            Trained model
+        training_stats: list;
+            Training stattistics as a list of dictionaries
         """
 
         # initiate global model
@@ -127,7 +155,7 @@ class Federation:
                     lr=self.learning_rate,
                 )
 
-                # training the client model
+                # training the client model for n' epochs
                 for ep in range(self.epochs_per_round):
                     this_client_state_dict, training_loss = client.train(
                         self.client_model_dict[client_id],
@@ -140,13 +168,13 @@ class Federation:
 
                 if os.path.exists(local_path):
                     torch.save(
-                        this_client_state_dict,
+                        this_client_state_dict.state_dict(),
                         local_path,
                     )
                 else:
                     os.makedirs(os.path.dirname(local_path), exist_ok=True)
                     torch.save(
-                        this_client_state_dict,
+                        this_client_state_dict.state_dict(),
                         local_path,
                     )
 
@@ -160,7 +188,6 @@ class Federation:
                     self.client_model_dict[client_id], self.loss_fn
                 )
                 training_stat_dict["fed_val"] = validation_loss
-
                 training_stats.append(training_stat_dict)
 
             # update global model parameters here
@@ -194,13 +221,13 @@ class Federation:
             global_path = f"{self.checkpt_path}/global_{round+1}/global_model.pth"
             if os.path.exists(global_path):
                 torch.save(
-                    global_model,
+                    global_model.state_dict(),
                     global_path,
                 )
             else:
                 os.makedirs(os.path.dirname(global_path), exist_ok=True)
                 torch.save(
-                    global_model,
+                    global_model.state_dict(),
                     global_path,
                 )
 
@@ -209,15 +236,18 @@ class Federation:
 
         return global_model, training_stats
 
-    def save_stats(self, model, training_stat: list) -> None:
+    def save_stats(self, model: torch.nn.Module, training_stat: list) -> None:
         """
         Saving the training stats and the model.
 
         Parameters:
         ----------------
-        model: trained model
-        training_stat: list; training stats
-        path_det: str; path to save the model and the training stats
+        model:
+            Trained model.
+        training_stat: list;
+            Training stats.
+        path_det: str;
+            Path to save the model and the training stats. Default is None.
 
         Returns:
         ----------------
@@ -260,7 +290,6 @@ if __name__ == "__main__":
     parser.add_argument("--log_summary", action="store_true")
     parser.add_argument("--rounds", type=int, default=20)
     parser.add_argument("--epochs_per_round", type=int, default=25)
-
     args = parser.parse_args()
 
     features = 197
@@ -274,7 +303,7 @@ if __name__ == "__main__":
     epochs_per_round = args.epochs_per_round
     epochs = rounds * epochs_per_round
 
-    checkpt_path = f"checkpt/saving/epoch_{epochs}/"
+    checkpt_path = f"checkpt/saving_only_selected_clients/epoch_{epochs}/"
 
     # {rounds}_rounds_{epochs_per_round}_epochs_per_round/"
 
@@ -289,8 +318,8 @@ if __name__ == "__main__":
     )
 
     client_ids = [f"{i}_{j}" for i in range(4) for j in range(6)]
-    # ["0_0", "0_1", "0_2", "0_3", "0_4", "0_5", "1_2", "1_3", "1_4", "1_5"]
-    # [f"{i}_{j}" for i in range(4) for j in range(6)]
+
+    # selected clients ["0_0","0_2","0_3","0_4","1_0","1_1", "1_2", "1_4","2_0", "2_1", "2_2", "2_3","2_4","2_5", "3_0", "3_2", "3_3","3_4","3_5"]
 
     print("Federation with clients " + ", ".join(client_ids))
 
