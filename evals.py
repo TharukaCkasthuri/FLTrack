@@ -21,15 +21,21 @@ def evaluate(
 
     Parameters:
     -------------
-    model: torch.nn.Module object; model to be evaluated
-    dataloader: torch.utils.data.DataLoader object; validation dataset
-    loss_fn: torch.nn.Module object; loss function
+    model: torch.nn.Module object;
+        Model to be evaluated.
+    dataloader: torch.utils.data.DataLoader object;
+        Validation dataset.
+    loss_fn: torch.nn.Module object;
+        Loss function.
 
     Returns:
     -------------
-    loss: float; average loss
-    mse: float; average mean squared error
-    mae: float; average mean absolute error
+    loss: float;
+      Average loss.
+    mse: float;
+        Average mean squared error.
+    mae: float;
+        Average mean absolute error.
 
     """
     model.eval()
@@ -53,21 +59,27 @@ def evaluate_mae_with_confidence(
     dataloader: torch.utils.data.DataLoader,
     num_bootstrap_samples: int = 250,
     confidence_level: float = 0.95,
-):
+) -> tuple:
     """
-    Evaluate the model with validation dataset and calculate confidence intervals.Returns the average mean absolute error and confidence intervals.
+    Evaluate the model with validation dataset and calculate confidence intervals. Returns the average mean absolute error and confidence intervals.
 
     Parameters:
     -------------
-    model: torch.nn.Module object; model to be evaluated
-    dataloader: torch.utils.data.DataLoader object; validation dataset
-    num_bootstrap_samples: int; number of bootstrap samples
-    confidence_level: float; confidence level
+    model: torch.nn.Module object;
+        Model to be evaluated.
+    dataloader: torch.utils.data.DataLoader object;
+        Validation dataset.
+    num_bootstrap_samples: int;
+        Number of bootstrap samples.
+    confidence_level: float;
+        Confidence level. Default is 0.95.
 
     Returns:
     -------------
-    avg_mae: float; average mean absolute error
-    (lower_mae, upper_mae): tuple; lower and upper bounds of the confidence interval for mean absolute error
+    avg_mae: float;
+        Average mean absolute error.
+    (lower_mae, upper_mae): tuple;
+        Lower and upper bounds of the confidence interval for mean absolute error.
     """
     model.eval()
     mae_values = []
@@ -112,20 +124,27 @@ def evaluate_mae_with_confidence(
     return avg_mae, (lower_mae, upper_mae), bootstrap_mae_std
 
 
-def influence_with_mae(model, influenced_model, data_loader) -> tuple:
+def influence_with_mae(
+    model: torch.nn.Module,
+    influenced_model: torch.nn.Module,
+    data_loader: torch.utils.data.DataLoader,
+) -> float:
     """
-    Calculate the influence of the model on the influenced model for the given validation set.
+    Calculate the influence of the model on the influenced model for the given validation set based on the difference of the mae.
 
     Parameters:
     -------------
-    model: torch.nn.Module object; model to be evaluated
-    influenced_model: torch.nn.Module object; model to be evaluated
-    data_loader: torch.utils.data.DataLoader object; validation dataset
+    model: torch.nn.Module object;
+        Model trained with all the clients.
+    influenced_model: torch.nn.Module object;
+        Model trained without a specific client.
+    data_loader: torch.utils.data.DataLoader object;
+        Validation dataset.
 
     Returns:
     -------------
-    model_predictions: list; predictions of the model
-    influence_model_predictions: list; predictions of the influenced model
+    influence: float;
+        Influence of the client on the federation.
     """
 
     model.eval()
@@ -149,19 +168,27 @@ def influence_with_mae(model, influenced_model, data_loader) -> tuple:
     return influence
 
 
-def influence(model, influenced_model, val_set) -> float:
+def influence(
+    model: torch.nn.Module,
+    influenced_model: torch.nn.Module,
+    val_set: torch.utils.data.DataLoader,
+) -> float:
     """
-    Calculate the influence of the model on the influenced model for the given validation set.
+    Calculate the influence of the model on the influenced model for the given validation set based on the prediction difference.
 
     Parameters:
     -------------
-    model: torch.nn.Module object; model to be evaluated
-    influenced_model: torch.nn.Module object; model to be evaluated
-    val_set: torch.utils.data.DataLoader object; validation dataset
+    model: torch.nn.Module object;
+        Model trained with all the clients.
+    influenced_model: torch.nn.Module object;
+        Model trained without a specific client.
+    data_loader: torch.utils.data.DataLoader object;
+        Validation dataset.
 
     Returns:
     -------------
-    influence: float; influence of the model on the influenced model
+    influence: float;
+        Influence of the model on the influenced model
     """
 
     model.eval()
@@ -184,12 +211,15 @@ def pairwise_euclidean_distance(x: torch.tensor, y: torch.tensor) -> torch.tenso
 
     Parameters:
     -------------
-    x: torch.tensor object; tensor 1
-    y: torch.tensor object; tensor 2
+    x: torch.tensor object;
+        Tensor 1.
+    y: torch.tensor object;
+        Tensor 2.
 
     Returns:
     -------------
-    distance: torch.tensor object; pairwise Euclidean distance between two tensors
+    distance: torch.tensor object;
+        Pairwise Euclidean distance between two tensors.
     """
 
     distance = torch.cdist(x, y, p=2)
@@ -202,12 +232,15 @@ def euclidean_distance(x: torch.tensor, y: torch.tensor) -> torch.tensor:
 
     Parameters:
     -------------
-    x: torch.tensor object; tensor 1
-    y: torch.tensor object; tensor 2
+    x: torch.tensor object;
+        Tensor 1.
+    y: torch.tensor object;
+        Tensor 2.
 
     Returns:
     -------------
-    distance: torch.tensor object; Euclidean distance between two matrices
+    distance: torch.tensor object;
+        Euclidean distance between two matrices.
     """
 
     # Calculate the squared Euclidean distance element-wise
@@ -222,17 +255,19 @@ def manhattan_distance(x: torch.tensor, y: torch.tensor) -> torch.tensor:
 
     Parameters:
     -------------
-    x: torch.tensor object; tensor 1
-    y: torch.tensor object; tensor 2
+    x: torch.tensor object;
+        Tensor 1.
+    y: torch.tensor object;
+        Tensor 2.
 
     Returns:
     -------------
-    distance: torch.tensor object; Manhattan distance between two matrices
+    distance: torch.tensor object;
+        Manhattan distance between two matrices
     """
 
     # Calculate the absolute difference element-wise
     absolute_difference = torch.abs(x - y)
-
     # Sum the absolute differences along the appropriate dimension
     distance = absolute_difference.sum(dim=1)
 
@@ -243,16 +278,19 @@ def accumulated_proximity(
     x: torch.tensor, y: torch.tensor, distance_matrix: Callable
 ) -> torch.tensor:
     """
-    Calculate the accumulated proximity between two tensors.
+    Calculate the accumulated proximity between two tensors. These tensors expected to be the same size.
 
     Parameters:
     -------------
-    x: torch.tensor object; tensor 1
-    y: torch.tensor object; tensor 2
+    x: torch.tensor object;
+        Tensor 1.
+    y: torch.tensor object;
+        Tensor 2.
 
     Returns:
     -------------
-    proximity: torch.tensor object; accumulated proximity between two tensors
+    proximity: torch.tensor object;
+        Accumulated proximity between two tensors.
     """
 
     distances = distance_matrix(x, y)
@@ -261,25 +299,77 @@ def accumulated_proximity(
     return proximity
 
 
+def hessian_eccentricity(hess_matrix_dict: dict, distance_matrix: Callable) -> dict:
+    """
+    Calculate the eccentricity between models (model is represented as dictinary of Hessian matrices).
+
+    Parameters:
+    -------------
+    hess_matrix_dict: dict;
+        Dictionary of Hessian matrices.
+    distance_matrix: Callable;
+        Distance matrix.
+
+    Returns:
+    -------------
+    eccentricity_dict: dict;
+        Eccentricity between models.
+    """
+    full_proximity = 0.0
+    prox_dict = {}
+
+    # Calculate proximities and cache results
+    prox_cache = {}
+
+    for i in hess_matrix_dict:
+        total_prox = 0.0
+
+        for j in hess_matrix_dict:
+            if (i, j) in prox_cache:
+                prox = prox_cache[(i, j)]
+            else:
+                prox = accumulated_proximity(
+                    hess_matrix_dict[i], hess_matrix_dict[j], distance_matrix
+                )
+                prox_cache[(i, j)] = prox
+
+            total_prox += prox
+
+        prox_dict[i] = total_prox
+        full_proximity += total_prox
+
+    eccentricity_dict = {
+        key: round((value / full_proximity).item(), 4)
+        for key, value in prox_dict.items()
+    }
+
+    return eccentricity_dict
+
+
 def layerwise_proximity(
     x: collections.OrderedDict,
     y: collections.OrderedDict,
     critarian: str,
-    distance_matrix,
-):
+    distance_matrix: Callable,
+) -> torch.tensor:
     """
     Calculate the layer-wise proximity between state dictionaries based on a critarian (layer bias or weights).
 
     Parameters:
     -------------
-    x: collections.OrderedDict; state dictionary 1
-    y: collections.OrderedDict; state dictionary 2
-    critarian: str; critarian to be evaluated, basically the layer name and specifying the weight or bias.
-    distance_matrix: Callable; distance matrix
+    x: collections.OrderedDict;
+        State dictionary 1.
+    y: collections.OrderedDict;
+        State dictionary 2.
+    critarian: str;
+        Critarian to be evaluated, basically the layer name and specifying the weight or bias.
+    distance_matrix: Callable;
+        Distance matrix.
 
     Returns:
     -------------
-    proximity: torch.tensor object; layer-wise proximity between state dictionaries
+    proximity: torch.tensor object;
+        Layer-wise proximity between state dictionaries.
     """
     if critarian.split(".")[-1] == "bias":
         proximity = accumulated_proximity(
@@ -291,6 +381,45 @@ def layerwise_proximity(
     return proximity
 
 
+def layerwise_eccentricity(state_dicts: dict, criterian: str, distance_matrix) -> dict:
+    """
+    Calculate the layer-wise eccentricity between models (dictinary of state dicts) based on a critarian (layer bias or weights).
+
+    Parameters:
+    -------------
+    state_dicts: dict;
+        Dictionary of state dicts.
+    criterian: str;
+        Critarian to be evaluated, basically the layer name and specifying the weight or bias.
+    distance_matrix: Callable;
+        Distance matrix.
+
+    Returns:
+    -------------
+    eccentricity_dict: dict;
+        Layer-wise eccentricity between models.
+    """
+
+    total_proximity = 0.0
+    prox_dict = {}
+    for i in state_dicts:
+        item_prox = 0.0
+        for j in state_dicts:
+            prox = layerwise_proximity(
+                state_dicts[i], state_dicts[j], criterian, distance_matrix
+            )
+            item_prox += prox
+
+        prox_dict[i] = item_prox.item()
+        total_proximity += item_prox
+
+    eccentricity_dict = {
+        key: (value / total_proximity).item() for key, value in prox_dict.items()
+    }
+
+    return eccentricity_dict
+
+
 def full_accumulated_proximity(
     clients: list, distance_matrix: Callable
 ) -> torch.tensor:
@@ -299,11 +428,13 @@ def full_accumulated_proximity(
 
     Parameters:
     -------------
-    clients: list; list of clients
+    clients: list;
+        List of clients.
 
     Returns:
     -------------
-    total_proximity: torch.tensor object; full accumulated proximity between all clients
+    total_proximity: torch.tensor object;
+        Full accumulated proximity between all clients
     """
     matrix_dict = {
         key: {"iso_matrix": torch.load("hessians/iso/" + str(key) + ".pth")}
