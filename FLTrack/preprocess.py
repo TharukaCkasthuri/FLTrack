@@ -8,7 +8,7 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 
-from utils import CustomDataSet
+from FLTrack.utils import CustomDataSet
 
 
 def load_file(file_path) -> pd.DataFrame:

@@ -8,8 +8,8 @@ import numpy as np
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 
-from utils import Client, CustomDataSet
-from utils import load_file, get_device
+from FLTrack.utils import Client, CustomDataSet
+from FLTrack.utils import load_file, get_device
 from models import ShallowNN
 
 from torch.utils.tensorboard import SummaryWriter

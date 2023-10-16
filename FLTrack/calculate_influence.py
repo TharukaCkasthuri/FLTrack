@@ -4,7 +4,7 @@ import argparse
 
 import pandas as pd
 
-from utils import get_device
+from FLTrack.utils import get_device
 
 from models import ShallowNN
 from federated_learning import Federation
