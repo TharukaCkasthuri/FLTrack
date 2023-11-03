@@ -4,7 +4,7 @@ import argparse
 
 import pandas as pd
 
-from FLTrack.utils import get_device
+from utils import get_device
 
 from models import ShallowNN
 from federated_learning import Federation
@@ -16,7 +16,7 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate", type=float, default=0.005)
     parser.add_argument("--loss_function", type=str, default="L1Loss")
     parser.add_argument("--log_summary", action="store_true")
-    parser.add_argument("--rounds", type=int, default=1)
+    parser.add_argument("--rounds", type=int, default=20)
     parser.add_argument("--epochs_per_round", type=int, default=25)
     args = parser.parse_args()
 
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     for item in skips_list:
         client_ids = [f"{i}_{j}" for i in range(4) for j in range(6)]
 
-        checkpt_path = f"checkpt/epoch_{epochs}/influence/{rounds}_rounds_{epochs_per_round}_epochs_per_round/{item}"
+        checkpt_path = f"checkpt/test/epoch_{epochs}/influence/{rounds}_rounds_{epochs_per_round}_epochs_per_round/{item}"
 
         fed = Federation(
             checkpt_path,

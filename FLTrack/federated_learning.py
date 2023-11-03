@@ -7,8 +7,8 @@ import os
 import pandas as pd
 from tqdm import tqdm
 
-from FLTrack.utils import Client
-from FLTrack.utils import get_device
+from utils import Client
+from utils import get_device
 from evals import evaluate
 from models import ShallowNN
 
@@ -290,6 +290,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_summary", action="store_true")
     parser.add_argument("--rounds", type=int, default=20)
     parser.add_argument("--epochs_per_round", type=int, default=25)
+    parser.add_argument("--save", action="store_true")
     args = parser.parse_args()
 
     features = 197
@@ -302,6 +303,7 @@ if __name__ == "__main__":
     rounds = args.rounds
     epochs_per_round = args.epochs_per_round
     epochs = rounds * epochs_per_round
+    save = args.save
 
     checkpt_path = f"checkpt/saving_only_selected_clients/epoch_{epochs}/"
 
