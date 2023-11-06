@@ -1,3 +1,21 @@
+"""
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+If you use this software in your research, please consider citing our paper:
+[Author(s). "Title of Your Paper." Journal or Conference Name, Year]
+"""
+
 import torch
 import time
 import collections
@@ -332,16 +350,15 @@ def hessian_eccentricity(hess_matrix_dict: dict, distance_matrix: Callable) -> d
                     hess_matrix_dict[i], hess_matrix_dict[j], distance_matrix
                 )
                 prox_cache[(i, j)] = prox
-
             total_prox += prox
-
+        print(total_prox)
         prox_dict[i] = total_prox
         full_proximity += total_prox
 
-    eccentricity_dict = {
-        key: round((value / full_proximity).item(), 4)
-        for key, value in prox_dict.items()
-    }
+    eccentricity_dict = {}
+
+    for key, value in prox_dict.items():
+        eccentricity_dict[key] = round((value / full_proximity).item(), 4)
 
     return eccentricity_dict
 
@@ -593,7 +610,46 @@ def calculate_hessian_flattened(model, loss_fn, data_loader) -> tuple:
 
     print("Calculation time of Hessian", (time.time() - start) / 60)
 
-    return hessian_matrix, (time.time() - start) / 60
+    return hessian_matrix
+
+
+def calculate_hessian_flattened_optimized(
+    model, loss_fn, data_loader, batch_size=64, device="cpu"
+):
+    model.eval()
+    model.to(device)
+
+    total_loss = 0
+    J_batch = []
+
+    start = time.time()
+
+    for batch_idx, (x, y) in enumerate(data_loader):
+        x, y = x.to(device), y.to(device)
+        predicts = model(x)
+        batch_loss = loss_fn(predicts, y)
+        total_loss += batch_loss
+
+        if (batch_idx + 1) % batch_size == 0:
+            # Calculate Jacobian w.r.t. model parameters for the batch
+            J_batch.extend(grad(batch_loss, model.parameters(), create_graph=True))
+
+    J = torch.cat([e.flatten() for e in J_batch])
+
+    print("Calculation time of Gradients: {:.2f} seconds".format(time.time() - start))
+
+    num_param = sum(p.numel() for p in model.parameters())
+    hessian_matrix = torch.zeros((num_param, num_param), device=device)
+
+    start = time.time()
+
+    for i in range(num_param):
+        result = torch.autograd.grad(J[i], model.parameters(), retain_graph=True)
+        hessian_matrix[i] = torch.cat([r.flatten() for r in result])
+
+    print("Calculation time of Hessian: {:.2f} seconds".format(time.time() - start))
+
+    return hessian_matrix
 
 
 def layer_importance(model, loss_fn, data_loader) -> dict:

@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from utils import Client
-from utils import get_device
+from FLTrack.utils import Client
+from FLTrack.utils import get_device
 from models import ShallowNN
 
 from torch.utils.tensorboard import SummaryWriter
