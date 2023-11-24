@@ -1,4 +1,23 @@
-"""The federated learning class."""
+"""
+Copyright (C) [2023] [Tharuka Kasthuriarachchige]
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+Paper: [Title of Your Paper]
+Published in: [Journal/Conference Name]
+"""
+
 import time
 import torch
 import argparse
@@ -61,6 +80,8 @@ class Federation:
         learning_rate: float,
         rounds: int,
         epochs_per_round: int,
+        save_ckpt: bool = False,
+        log_summary: bool = False,
     ) -> None:
         self.checkpt_path = checkpt_path
         self.features = features
@@ -69,6 +90,8 @@ class Federation:
         self.learning_rate = learning_rate
         self.training_rounds = rounds
         self.epochs_per_round = epochs_per_round
+        self.save_ckpt = save_ckpt
+        self.log_summary = log_summary
 
         self.writer = SummaryWriter(comment="_fed_train_batch" + str(batch_size))
 
@@ -290,7 +313,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_summary", action="store_true")
     parser.add_argument("--rounds", type=int, default=20)
     parser.add_argument("--epochs_per_round", type=int, default=25)
-    parser.add_argument("--save", action="store_true")
+    parser.add_argument("--save_ckpt", action="store_true")
     args = parser.parse_args()
 
     features = 197
@@ -305,9 +328,7 @@ if __name__ == "__main__":
     epochs = rounds * epochs_per_round
     save = args.save
 
-    checkpt_path = f"checkpt/saving_only_selected_clients/epoch_{epochs}/"
-
-    # {rounds}_rounds_{epochs_per_round}_epochs_per_round/"
+    checkpt_path = f"checkpt/saving/epoch_{epochs}/{rounds}_rounds_{epochs_per_round}_epochs_per_round/"
 
     federation = Federation(
         checkpt_path,
@@ -320,8 +341,6 @@ if __name__ == "__main__":
     )
 
     client_ids = [f"{i}_{j}" for i in range(4) for j in range(6)]
-
-    # selected clients ["0_0","0_2","0_3","0_4","1_0","1_1", "1_2", "1_4","2_0", "2_1", "2_2", "2_3","2_4","2_5", "3_0", "3_2", "3_3","3_4","3_5"]
 
     print("Federation with clients " + ", ".join(client_ids))
 
