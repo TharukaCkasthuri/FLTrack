@@ -20,10 +20,13 @@ Published in: [Journal/Conference Name]
 
 import torch
 
+import torch.nn as nn
+import torch.nn.init as init
 
-class ShallowNN(torch.nn.Module):
+
+class ShallowNN(nn.Module):
     """
-    Shallow Nueral Network model with three layers.
+    Shallow Neural Network model with three layers.
 
     Parameters:
     ------------
@@ -32,16 +35,24 @@ class ShallowNN(torch.nn.Module):
 
     def __init__(self, feats):
         super(ShallowNN, self).__init__()
-        self.layer_1 = torch.nn.Linear(feats, 64)
-        self.relu_1 = torch.nn.ReLU()
-        self.layer_2 = torch.nn.Linear(64, 32)
-        self.relu_2 = torch.nn.ReLU()
-        self.layer_3 = torch.nn.Linear(32, 1)
+        self.layer_1 = nn.Linear(feats, 32)
+        self.bn_1 = nn.BatchNorm1d(32)  # Add batch normalization after layer 1
+        self.relu_1 = nn.ReLU()
+        self.layer_2 = nn.Linear(32, 16)
+        self.relu_2 = nn.ReLU()
+        self.layer_3 = nn.Linear(16, 1)
         self.track_layers = {
             "layer_1": self.layer_1,
+            "bn_1": self.bn_1,
             "layer_2": self.layer_2,
             "layer_3": self.layer_3,
         }
+
+        # Initialize weights using He initialization
+        for layer in [self.layer_1, self.layer_2, self.layer_3]:
+            if isinstance(layer, nn.Linear):
+                init.kaiming_uniform_(layer.weight, mode="fan_in", nonlinearity="relu")
+                init.constant_(layer.bias, 0.0)
 
     def forward(self, inputs):
         """
@@ -55,8 +66,8 @@ class ShallowNN(torch.nn.Module):
         ------------
         x: torch.tensor object; output data
         """
-        x = self.relu_1(self.layer_1(inputs))
-        x = self.relu_2(self.layer_2(x))
+        x = self.relu_1(self.bn_1(self.layer_1(inputs)))  # Apply BN after layer 1
+        x = self.relu_2(self.layer_2(x))  # Apply BN after layer 2
         x = self.layer_3(x)
         return x
 

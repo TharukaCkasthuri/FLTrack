@@ -124,85 +124,20 @@ class CustomDataSet(Dataset):
         """
         return self.x_train[idx], self.y_train[idx]
 
-
-class Client:
-    """
-    Client class for federated learning.
-
-    Parameters:
-    ------------
-    client_id: str; client id
-    train_dataset: torch.utils.data.Dataset object; training dataset
-    test_dataset: torch.utils.data.Dataset object; validation dataset
-    batch_size: int; batch size
-    """
-
-    def __init__(
-        self,
-        client_id: str,
-        train_dataset: object,
-        test_dataset: object,
-        batch_size: int,
-    ) -> None:
-        self.client_id: str = client_id
-        self.train_dataloader = DataLoader(train_dataset, batch_size, shuffle=True)
-        self.test_dataloader = DataLoader(test_dataset, batch_size, shuffle=True)
-
-    def train(self, model, loss_fn, optimizer, epoch) -> tuple:
+    def get_subset(self, start_index, end_index):
         """
-        Training the model.
+        Returns a subset of the dataset based on the specified range.
 
         Parameters:
         ------------
-        model: torch.nn.Module object; model to be trained
-        loss_fn: torch.nn.Module object; loss function
-        optimizer: torch.optim object; optimizer
-        epoch: int; epoch number
+        start_index: int; starting index of the subset
+        end_index: int; ending index of the subset
 
         Returns:
         ------------
-        model: torch.nn.Module object; trained model
-        loss_avg: float; average loss
+        subset_x: torch.tensor object; subset of input data
+        subset_y: torch.tensor object; subset of labels
         """
-        batch_loss = []
-        print(f"Client: {self.client_id} Started it's local training")
-
-        for batch_idx, (x, y) in enumerate(self.train_dataloader):
-            outputs = model(x)
-            loss = loss_fn(outputs, y)
-            model.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            if batch_idx % 200 == 0:
-                print(
-                    f"Epoch: {epoch + 1} \tClient ID: {self.client_id} \t[{batch_idx * len(x)}/{len(self.train_dataloader.dataset)} ({100.0 * batch_idx / len(self.train_dataloader):.0f}%)] \tLoss: {loss.item():.6f}"
-                )
-
-            batch_loss.append(loss.item())
-
-        loss_avg = sum(batch_loss) / len(batch_loss)
-
-        return model, loss_avg
-
-    def eval(self, model, loss_fn) -> float:
-        """
-        Evaluate the model with validation dataset.
-
-        Parameters:
-        ------------
-        model: torch.nn.Module object; model to be evaluated
-        loss_fn: torch.nn.Module object; loss function
-
-        Returns:
-        ------------
-        loss_avg: float; average loss
-        """
-        batch_loss = []
-        for _, (x, y) in enumerate(self.test_dataloader):
-            outputs = model(x)
-            loss = loss_fn(outputs, y)
-            batch_loss.append(loss.item())
-        loss_avg = sum(batch_loss) / len(batch_loss)
-
-        return loss_avg
+        subset_x = self.x_train[start_index:end_index]
+        subset_y = self.y_train[start_index:end_index]
+        return subset_x, subset_y

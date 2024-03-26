@@ -25,10 +25,10 @@ import pandas as pd
 import numpy as np
 
 from torch.utils.data import Dataset, DataLoader
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import RobustScaler
 from sklearn.model_selection import train_test_split
 
-from FLTrack.utils import CustomDataSet
+from utils import CustomDataSet
 
 
 def load_file(file_path) -> pd.DataFrame:
@@ -71,15 +71,15 @@ def build_dataset(dataframe, client_id) -> None:
     None
     """
 
-    for c in dataframe.columns:
-        dataframe[c] = dataframe[c].apply(lambda a: np.ma.log(a))
-        print(str(c) + "done")
+    # for c in dataframe.columns:
+    #    dataframe[c] = dataframe[c].apply(lambda a: np.ma.log(a))
+    #    print(str(c) + "done")
 
     X = dataframe.drop(columns=["label"])
     y = dataframe["label"].values
 
-    scaler_x = StandardScaler()
-    scaler_y = StandardScaler()
+    scaler_x = RobustScaler()
+    scaler_y = RobustScaler()
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.20, random_state=42
@@ -95,24 +95,25 @@ def build_dataset(dataframe, client_id) -> None:
         scaler_x.transform(X_test.values), index=X_test.index, columns=X_test.columns
     )
 
-    y_train = scaler_y.fit_transform(y_train.reshape(-1, 1))
-    y_test = scaler_y.transform(y_test.reshape(-1, 1))
+    # y_train = scaler_y.fit_transform(y_train.reshape(-1, 1))
+    # y_test = scaler_y.transform(y_test.reshape(-1, 1))
 
     train_dataset = CustomDataSet(X_train, y_train)
     test_dataset = CustomDataSet(X_test, y_test)
 
-    torch.save(train_dataset, "./trainpt/" + str(client_id) + ".pt")
-    torch.save(test_dataset, "./testpt/" + str(client_id) + ".pt")
+    torch.save(train_dataset, "../trainpt/" + str(client_id) + ".pt")
+    torch.save(test_dataset, "../testpt/" + str(client_id) + ".pt")
+    print("saved")
 
 
 def main():
-    data_path = "../kv_data/kv/"
+    data_path = "../filtered_df/all_data"
     files = os.listdir(data_path)
     ids = [file.split(".")[0] for file in files]
     files_path = [os.path.join(data_path, file) for file in files]
 
-    for id, pickle_file in zip(ids, files_path):
-        build_dataset(load_file(pickle_file), id)
+    for id, csv_file in zip(ids, files_path):
+        build_dataset(pd.read_csv(csv_file), id)
 
 
 if __name__ == "__main__":

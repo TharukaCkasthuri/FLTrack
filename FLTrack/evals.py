@@ -390,7 +390,7 @@ def layerwise_proximity(
     proximity: torch.tensor object;
         Layer-wise proximity between state dictionaries.
     """
-    if critarian.split(".")[-1] == "bias":
+    if len(x[critarian].shape) == 1:
         proximity = accumulated_proximity(
             x[critarian].view(1, -1), y[critarian].view(1, -1), distance_matrix
         )

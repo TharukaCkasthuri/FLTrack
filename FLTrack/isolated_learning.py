@@ -24,117 +24,87 @@ import argparse
 
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 
-from FLTrack.utils import Client
-from FLTrack.utils import get_device
+from clients import Client
+from utils import get_device
 from models import ShallowNN
+from params import model_hparams
 
 from torch.utils.tensorboard import SummaryWriter
 
 device = get_device()
 
 parser = argparse.ArgumentParser(description="Isolated client training parameters")
-parser.add_argument("--batch_size", type=int, default=64)
-parser.add_argument("--epochs", type=int, default=200)
-parser.add_argument("--learning_rate", type=float, default=0.005)
 parser.add_argument("--loss_function", type=str, default="L1Loss")
 parser.add_argument("--log_summary", action="store_true")
 
+
+# best lr for 1 is 0.01, with 256 batch size , and weight_decay = 0.01
+# best lr for 6 is 0.00001, with 256 batch size , and weight_decay = 0.00001
+# best lr for 18,20 is 0.01 with 256 batch size weight_decay = 0.0001
+# best lr for 3 is 0.01 with 256 batch size weight_decay = 0.0001
+# best lr for 2,4,5,6,7,8,9,11,12,13,14,15,16,17,19, 21, 22,23,24 is 0.01 with 256 batch size weight_decay = 0.0001
+# best lr for 10 is 0.001 with 256 batch size weight_decay = 0.01
+
+# epoch 250
+
+# best lr for 7,9,14,15,16,17, 22,23,24 is 0.01 with 256 batch size weight_decay = 0.0001
+# best lr for 1 is 0.01, with 256 batch size , and weight_decay = 0.01
+# best lr 2, 4, 5 for lr 0.01 weight_decay = 0.001
+# best lr for 3 is 0.01 with 256 batch size weight_decay = 0.001
+# best lr for 6,8,11,12,13,19,21 is 0.01 with 256 batch size weight_decay = 0.001
+# best lr for 10 is 0.001 with 256 batch size weight_decay = 0.01
+# best lr for 18,20 is 0.01 with 256 batch size weight_decay = 0.0001
+
 args = parser.parse_args()
 
-features = 197
+features = 169
 
 # Hyper Parameters
 loss_fn = getattr(torch.nn, args.loss_function)()
-batch_size = args.batch_size
-epochs = args.epochs
-learning_rate = args.learning_rate
 log_summary = args.log_summary
 
-# Args
-checkpt_path = f"checkpt/epoch_{epochs}/isolated/"
+client_ids = [f"c{i}" for i in range(1, 25)]
 
-client_ids = [f"{i}_{j}" for i in range(4) for j in range(6)]
+#client_ids = ["c18"]
 
 clients = [
     Client(
         id,
-        torch.load(f"trainpt/{id}.pt"),
-        torch.load(f"testpt/{id}.pt"),
-        batch_size,
+        torch.load(f"../trainpt/{id}.pt"),
+        torch.load(f"../testpt/{id}.pt"),
+        model_hparams[f"{id}"]["batch_size"],
+        model_hparams[f"{id}"]["learning_rate"],
+        model_hparams[f"{id}"]["weight_decay"],
+        local_model=ShallowNN(features),
     )
     for id in client_ids
 ]
 
-if log_summary:
-    with SummaryWriter(comment=f"_iso_train_batch_{batch_size}") as writer:
-        for client in clients:
-            client_id = client.client_id
-            client_model = ShallowNN(features)
-            train_losses = []
-            validation_losses = []
 
-            optimizer = torch.optim.SGD(client_model.parameters(), lr=learning_rate)
+for client in clients:
+    client_id = client.client_id
+    model = ShallowNN(features)
+    train_losses = []
+    validation_losses = []
 
-            for epoch in tqdm(range(epochs)):
-                client_model, train_loss = client.train(
-                    client_model, loss_fn, optimizer, epoch
-                )
-                print("Train loss:", train_loss)
-                validation_loss = client.eval(client_model, loss_fn)
-                print("Validation loss:", validation_loss, "\n")
-                train_losses.append(train_loss)
-                validation_losses.append(validation_loss)
-                writer.add_scalars(
-                    str(client_id),
-                    {"Training Loss": train_loss, "Validation Loss": validation_loss},
-                    epoch,
-                )
+    client_model, train_loss, validation_loss = client.train(
+        loss_fn, model_hparams[f"{client_id}"]["num_epochs"]
+    )
 
-            model_path = f"{checkpt_path}batch{batch_size}_client_{client_id}.pth"
+    print("\n")
+    train_losses.append(train_loss)
+    validation_losses.append(validation_loss)
 
-            saving_model = client_model.eval()
+    print(f"Client {client_id} has trained successfully", validation_loss)
 
-            if os.path.exists(model_path):
-                torch.save(saving_model.state_dict(), model_path)
-            else:
-                os.makedirs(os.path.dirname(model_path), exist_ok=True)
-                torch.save(saving_model.state_dict(), model_path)
+    model_path = f"checkpt/isolated/epoch_{model_hparams[f"{client_id}"]["num_epochs"]}/batch{client.batch_size}_client_{client_id}.pth"
+    print(model_path)
 
-                loss_df = pd.DataFrame(
-                    np.column_stack([train_losses, validation_losses]),
-                    columns=["iso_train", "iso_val"],
-                )
-                loss_df.to_csv(
-                    f"losses/batch{batch_size}_client_{client_id}.csv",
-                    index=False,
-                )
+    saving_model = client_model  # .eval()
 
-        writer.flush()
-        writer.close()
-
-else:
-    for client in clients:
-        client_id = client.client_id
-        client_model = ShallowNN(features)
-        train_losses = []
-        validation_losses = []
-
-        optimizer = torch.optim.SGD(client_model.parameters(), lr=learning_rate)
-
-        for epoch in tqdm(range(epochs)):
-            client_model, train_loss = client.train(
-                client_model, loss_fn, optimizer, epoch
-            )
-            print("Train loss:", train_loss)
-
-        model_path = f"{checkpt_path}batch{batch_size}_client_{client_id}.pth"
-
-        saving_model = client_model.eval()
-
-        if os.path.exists(model_path):
-            torch.save(saving_model.state_dict(), model_path)
-        else:
-            os.makedirs(os.path.dirname(model_path), exist_ok=True)
-            torch.save(saving_model.state_dict(), model_path)
+    if os.path.exists(model_path):
+        torch.save(saving_model.state_dict(), model_path)
+    else:
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
+        torch.save(saving_model.state_dict(), model_path)

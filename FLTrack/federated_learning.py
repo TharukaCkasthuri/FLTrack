@@ -26,13 +26,13 @@ import os
 import pandas as pd
 from tqdm import tqdm
 
-from utils import Client
+from clients import Client
 from utils import get_device
 from evals import evaluate
 from models import ShallowNN
+from params import model_hparams
 
 from torch.utils.tensorboard import SummaryWriter
-from torch.utils.data import DataLoader
 
 
 class Federation:
@@ -76,24 +76,20 @@ class Federation:
         checkpt_path: str,
         features: int,
         loss_fn: torch.nn.Module,
-        batch_size: int,
-        learning_rate: float,
-        rounds: int,
-        epochs_per_round: int,
+        global_rounds: int,
+        local_rounds: int,
         save_ckpt: bool = False,
         log_summary: bool = False,
     ) -> None:
         self.checkpt_path = checkpt_path
         self.features = features
         self.loss_fn = loss_fn
-        self.batch_size = batch_size
-        self.learning_rate = learning_rate
-        self.training_rounds = rounds
-        self.epochs_per_round = epochs_per_round
+        self.global_rounds = global_rounds
+        self.local_rounds = local_rounds
         self.save_ckpt = save_ckpt
         self.log_summary = log_summary
 
-        self.writer = SummaryWriter(comment="_fed_train_batch" + str(batch_size))
+        # self.writer = SummaryWriter(comment="_fed_train_batch" + str(batch_size))
 
     def set_clients(self, client_ids: list) -> None:
         """
@@ -112,26 +108,24 @@ class Federation:
         self.clients = [
             Client(
                 id,
-                torch.load("trainpt/" + id + ".pt"),
-                torch.load("testpt/" + id + ".pt"),
-                self.batch_size,
+                torch.load(f"../trainpt/{id}.pt"),
+                torch.load(f"../testpt/{id}.pt"),
+                model_hparams[f"{id}"]["batch_size"],
+                model_hparams[f"{id}"]["learning_rate"],
+                model_hparams[f"{id}"]["weight_decay"],
+                local_model=ShallowNN(features),
             )
-            for id in self.client_ids
+            for id in client_ids
         ]
-
-        self.client_model_dict = {}
-        for i in self.client_ids:
-            self.client_model_dict[i] = ShallowNN(self.features)
-
-        test_dataset = torch.utils.data.ConcatDataset(
-            [torch.load("testpt/" + id + ".pt") for id in self.client_ids]
-        )
-        self.test_dataloader = DataLoader(test_dataset, self.batch_size, shuffle=True)
+        self.client_dict = {
+            client_id: {"training_loss": [], "validation_loss": []}
+            for client_id in client_ids
+        }
 
     def train(
         self,
         model: torch.nn.Module,
-        summery: bool = False,
+        log_summary: bool = False,
     ) -> tuple:
         """
         Training the model.
@@ -152,66 +146,38 @@ class Federation:
         """
 
         # initiate global model
-        global_model = model(self.features)
-        # global_model.to(device)
+        global_model = model
         global_model.train()
 
         global_weights = global_model.state_dict()
         model_layers = global_model.track_layers.keys()
 
-        training_stats = []
-        for round in tqdm(range(self.training_rounds)):
-            local_models, local_loss = [], []
+        for round in tqdm(range(self.global_rounds)):
+            local_models = []
 
             print(f"\n | Global Training Round : {round+1} |\n")
 
+            global_model.load_state_dict(global_weights)
+
             for client in self.clients:
                 client_id = client.client_id
-                training_stat_dict = {"client_id": client_id, "training_round": round}
 
                 # loading the global model weights to client model
-                self.client_model_dict[client_id].load_state_dict(global_weights)
-
-                # setting up the optimizer
-                optimizer = torch.optim.SGD(
-                    self.client_model_dict[client_id].parameters(),
-                    lr=self.learning_rate,
-                )
+                client.set_model(global_weights)
 
                 # training the client model for n' epochs
-                for ep in range(self.epochs_per_round):
-                    this_client_state_dict, training_loss = client.train(
-                        self.client_model_dict[client_id],
-                        self.loss_fn,
-                        optimizer,
-                        ep,
-                    )
-
-                local_path = f"{self.checkpt_path}/global_{round+1}/clients/client_model_{client_id}.pth"
-
-                if os.path.exists(local_path):
-                    torch.save(
-                        this_client_state_dict.state_dict(),
-                        local_path,
-                    )
-                else:
-                    os.makedirs(os.path.dirname(local_path), exist_ok=True)
-                    torch.save(
-                        this_client_state_dict.state_dict(),
-                        local_path,
-                    )
-
-                local_loss.append(training_loss)
-                local_models.append(this_client_state_dict)
-
-                training_stat_dict["fed_train"] = (
-                    sum(local_loss[-self.epochs_per_round :]) / self.epochs_per_round
+                client_model, train_loss, validation_loss = client.train(
+                    loss_fn, self.local_rounds, round
                 )
-                validation_loss = client.eval(
-                    self.client_model_dict[client_id], self.loss_fn
-                )
-                training_stat_dict["fed_val"] = validation_loss
-                training_stats.append(training_stat_dict)
+
+                local_models.append(client_model)
+
+                if self.save_ckpt:
+                    local_path = f"{self.checkpt_path}/global_{round+1}/clients/client_model_{client_id}.pth"
+                    self.save_models(client_model, local_path)
+
+                self.client_dict[client_id]["training_loss"].append(train_loss)
+                self.client_dict[client_id]["validation_loss"].append(validation_loss)
 
             # update global model parameters here
             state_dicts = [model.state_dict() for model in local_models]
@@ -223,43 +189,28 @@ class Federation:
                     [item[str(key) + ".bias"] for item in state_dicts]
                 ).mean(dim=0)
                 # info here - https://discuss.pytorch.org/t/how-to-change-weights-and-bias-nn-module-layers/93065/2
-
             global_weights = global_model.state_dict()
 
-            if summery:
-                global_training_loss = sum(local_loss) / len(local_loss)
-                global_validation_loss, _, _ = evaluate(
-                    global_model, self.test_dataloader, loss_fn
-                )
+            if self.save_ckpt:
+                global_path = f"{self.checkpt_path}/global_{round+1}/global_model.pth"
+                self.save_models(global_model, global_path)
 
-                self.writer.add_scalars(
-                    "Global Model - Federated Learning",
-                    {
-                        "Training Loss": global_training_loss,
-                        "Validation Loss": global_validation_loss,
-                    },
-                    round,
-                )
+        # self.writer.flush()
+        # self.writer.close()
 
-            global_path = f"{self.checkpt_path}/global_{round+1}/global_model.pth"
-            if os.path.exists(global_path):
-                torch.save(
-                    global_model.state_dict(),
-                    global_path,
-                )
+        return global_model
+
+    def save_stats(self):
+        for client_id, data in self.client_dict.items():
+            file_path = f"training_stats/fedl/fl_stats_epoch{self.global_rounds}_{self.local_rounds}/client_{client_id}.csv"
+            df = pd.DataFrame(data)
+            if os.path.exists(file_path):
+                df.to_csv(file_path, index=False)
             else:
-                os.makedirs(os.path.dirname(global_path), exist_ok=True)
-                torch.save(
-                    global_model.state_dict(),
-                    global_path,
-                )
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                df.to_csv(file_path, index=False)
 
-        self.writer.flush()
-        self.writer.close()
-
-        return global_model, training_stats
-
-    def save_stats(self, model: torch.nn.Module, training_stat: list) -> None:
+    def save_models(self, model: torch.nn.Module, ckptpath: str) -> None:
         """
         Saving the training stats and the model.
 
@@ -267,9 +218,7 @@ class Federation:
         ----------------
         model:
             Trained model.
-        training_stat: list;
-            Training stats.
-        path_det: str;
+        ckptpath: str;
             Path to save the model and the training stats. Default is None.
 
         Returns:
@@ -277,77 +226,65 @@ class Federation:
         None
         """
 
-        path = f"losses/_federated_stats_epoch{self.training_rounds}_{self.epochs_per_round}.csv"
-
-        if os.path.exists(path):
-            pd.DataFrame.from_dict(training_stat).to_csv(
-                path,
-                index=False,
-            )
-        else:
-            os.makedirs(os.path.dirname(path), exist_ok=True)
-            pd.DataFrame.from_dict(training_stat).to_csv(
-                path,
-                index=False,
-            )
-
-        if os.path.exists(self.checkpt_path):
+        if os.path.exists(ckptpath):
             torch.save(
                 model.state_dict(),
-                f"{self.checkpt_path}_fedl_global_{self.training_rounds}_{self.epochs_per_round}.pth",
+                ckptpath,
             )
         else:
-            os.makedirs(os.path.dirname(self.checkpt_path), exist_ok=True)
+            os.makedirs(os.path.dirname(ckptpath), exist_ok=True)
             torch.save(
                 model.state_dict(),
-                f"{self.checkpt_path}_fedl_global_{self.training_rounds}_{self.epochs_per_round}.pth",
+                ckptpath,
             )
 
 
 if __name__ == "__main__":
     device = get_device()
     parser = argparse.ArgumentParser(description="Federated training parameters")
-    parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--learning_rate", type=float, default=0.005)
     parser.add_argument("--loss_function", type=str, default="L1Loss")
     parser.add_argument("--log_summary", action="store_true")
-    parser.add_argument("--rounds", type=int, default=20)
-    parser.add_argument("--epochs_per_round", type=int, default=25)
+    parser.add_argument("--global_rounds", type=int, default=25)
+    parser.add_argument("--local_rounds", type=int, default=10)
     parser.add_argument("--save_ckpt", action="store_true")
     args = parser.parse_args()
 
-    features = 197
+    features = 169
 
     # Hyper Parameters
     loss_fn = getattr(torch.nn, args.loss_function)()
-    batch_size = args.batch_size
-    learning_rate = args.learning_rate
     log_summary = args.log_summary
-    rounds = args.rounds
-    epochs_per_round = args.epochs_per_round
-    epochs = rounds * epochs_per_round
-    save = args.save
+    global_rounds = args.global_rounds
+    local_rounds = args.local_rounds
+    epochs = global_rounds * local_rounds
+    save_ckpt = args.save_ckpt
 
-    checkpt_path = f"checkpt/saving/epoch_{epochs}/{rounds}_rounds_{epochs_per_round}_epochs_per_round/"
+    checkpt_path = f"checkpt/fedl/epoch_{epochs}/{global_rounds}_rounds_{local_rounds}_epochs_per_round/"
 
     federation = Federation(
         checkpt_path,
         features,
         loss_fn,
-        batch_size,
-        learning_rate,
-        rounds,
-        epochs_per_round,
+        global_rounds,
+        local_rounds,
+        save_ckpt,
+        log_summary,
     )
 
-    client_ids = [f"{i}_{j}" for i in range(4) for j in range(6)]
+    client_ids = [f"c{i}" for i in range(1, 25)]
 
     print("Federation with clients " + ", ".join(client_ids))
 
     start = time.time()
     federation.set_clients(client_ids=client_ids)
-    trained_model, training_stats = federation.train(ShallowNN)
-    federation.save_stats(trained_model, training_stats)
+    model = ShallowNN(169)
+    trained_model = federation.train(model)
+    federation.save_stats()
+    model_path = f"{checkpt_path}/global_model.pth"
+    federation.save_models(trained_model.eval(), model_path)
+
+    # federation.save_stats(trained_model, training_stats)
+
     print("Federation with clients " + ", ".join(client_ids))
     print(
         "Approximate time taken to train",
