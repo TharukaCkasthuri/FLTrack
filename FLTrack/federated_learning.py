@@ -244,7 +244,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Federated training parameters")
     parser.add_argument("--loss_function", type=str, default="L1Loss")
     parser.add_argument("--log_summary", action="store_true")
-    parser.add_argument("--global_rounds", type=int, default=25)
+    parser.add_argument("--global_rounds", type=int, default=20)
     parser.add_argument("--local_rounds", type=int, default=10)
     parser.add_argument("--save_ckpt", action="store_true")
     args = parser.parse_args()

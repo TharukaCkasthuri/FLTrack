@@ -14,8 +14,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-Paper: [Title of Your Paper]
-Published in: [Journal/Conference Name]
+Paper: [Clients Behavior Monitoring in Federated Learning via Eccentricity Analysis]
+Published in: [IEEE International Conference on Evolving and Adaptive Intelligent Systems,
+IEEE EAIS 2024 (23–24 May 2024, Madrid, Spain), 2024]
 """
 
 import os
@@ -37,24 +38,6 @@ device = get_device()
 parser = argparse.ArgumentParser(description="Isolated client training parameters")
 parser.add_argument("--loss_function", type=str, default="L1Loss")
 parser.add_argument("--log_summary", action="store_true")
-
-
-# best lr for 1 is 0.01, with 256 batch size , and weight_decay = 0.01
-# best lr for 6 is 0.00001, with 256 batch size , and weight_decay = 0.00001
-# best lr for 18,20 is 0.01 with 256 batch size weight_decay = 0.0001
-# best lr for 3 is 0.01 with 256 batch size weight_decay = 0.0001
-# best lr for 2,4,5,6,7,8,9,11,12,13,14,15,16,17,19, 21, 22,23,24 is 0.01 with 256 batch size weight_decay = 0.0001
-# best lr for 10 is 0.001 with 256 batch size weight_decay = 0.01
-
-# epoch 250
-
-# best lr for 7,9,14,15,16,17, 22,23,24 is 0.01 with 256 batch size weight_decay = 0.0001
-# best lr for 1 is 0.01, with 256 batch size , and weight_decay = 0.01
-# best lr 2, 4, 5 for lr 0.01 weight_decay = 0.001
-# best lr for 3 is 0.01 with 256 batch size weight_decay = 0.001
-# best lr for 6,8,11,12,13,19,21 is 0.01 with 256 batch size weight_decay = 0.001
-# best lr for 10 is 0.001 with 256 batch size weight_decay = 0.01
-# best lr for 18,20 is 0.01 with 256 batch size weight_decay = 0.0001
 
 args = parser.parse_args()
 

@@ -14,8 +14,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-Paper: [Title of Your Paper]
-Published in: [Journal/Conference Name]
+Paper: [Clients Behavior Monitoring in Federated Learning via Eccentricity Analysis]
+Published in: [IEEE International Conference on Evolving and Adaptive Intelligent Systems,
+IEEE EAIS 2024 (23–24 May 2024, Madrid, Spain), 2024]
 """
 
 import torch
