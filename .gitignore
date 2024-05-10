@@ -5,3 +5,4 @@ runs/
 *.pth
 hessians/
 *.csv
+.DS_Store
