@@ -393,11 +393,61 @@ def calculate_hessian_gnewtons(model, loss_fn, data_loader) -> tuple:
 
     print("Calculation time of Gradients", time.time() - start)
 
-    hessian_matrix = torch.mm(J_transpose, J.view(1, -1))
+    gh_matrix = torch.mm(J_transpose, J.view(1, -1)) / (2 * avg_loss)
 
     print("Calculation time of Hessian", (time.time() - start) / 60)
 
-    return hessian_matrix
+    return gh_matrix
+
+
+def calculate_hessian_gnewtons_optimized(model, loss_fn, data_loader) -> tuple:
+    """
+    Calculate the Hessian matrix of the model for the given dataset using gauss-newton approximation method.
+
+    Parameters:
+    -------------
+    model: torch.nn.Module object; model to be evaluated
+    loss_fn: torch.nn.Module object; loss function
+    data_loader: torch.utils.data.DataLoader object; validation dataset
+
+    Returns:
+    -------------
+    hessian_matrix: torch.tensor object; Hessian matrix
+    """
+    model.eval()
+
+    total_loss = 0
+    for _, (x, y) in enumerate(data_loader):
+        predicts = model(x)
+        y = y.view(-1, 1)
+        batch_loss = loss_fn(predicts, y)
+        total_loss += batch_loss
+    avg_loss = total_loss / len(data_loader)
+
+    start = time.time()
+    # Calculate Jacobian w.r.t. model parameters
+    J = grad(avg_loss, list(model.parameters()), create_graph=True)
+    J = torch.cat([e.flatten() for e in J])  # flatten
+
+    J_transpose = J.view(-1, 1)  # Reshape for transpose operation
+    print("Calculation time of Gradients", time.time() - start)
+
+    # Calculate Hessian of the output layer
+    num_param = sum(p.numel() for p in model.layer_3.parameters())
+    H = torch.zeros((num_param, num_param))
+
+    for i in range(num_param):
+        result = grad(J[i], list(model.layer_3.parameters()), create_graph=True)
+        H[i] = torch.cat([r.flatten() for r in result])  # flatten
+
+    H = torch.cat([e.flatten() for e in H])  # flatten
+    gh_matrix = torch.mm(J_transpose, H.view(1, -1))
+
+    gh_matrix = torch.mm(J.view(1, -1), gh_matrix)
+
+    print("Calculation time of Hessian", (time.time() - start) / 60)
+
+    return gh_matrix
 
 
 def layer_importance(model, loss_fn, data_loader) -> dict:
@@ -527,9 +577,3 @@ def calculate_contribution(local_models, model_layers):
         }
 
     return contributions
-
-
-# Example usage:
-# local_models = [local_model1, local_model2, ...]  # List of local models
-# model_layers = ['layer1', 'layer2', ...]  # List of layers to consider
-# contributions = calculate_contribution(local_models, model_layers)

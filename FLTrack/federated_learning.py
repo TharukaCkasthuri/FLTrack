@@ -14,8 +14,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-Paper: [Title of Your Paper]
-Published in: [Journal/Conference Name]
+Paper: [Clients Behavior Monitoring in Federated Learning via Eccentricity Analysis]
+Published in: [IEEE International Conference on Evolving and Adaptive Intelligent Systems,
+IEEE EAIS 2024 (23–24 May 2024, Madrid, Spain), 2024]
 """
 
 import time
@@ -113,7 +114,7 @@ class Federation:
                 model_hparams[f"{id}"]["batch_size"],
                 model_hparams[f"{id}"]["learning_rate"],
                 model_hparams[f"{id}"]["weight_decay"],
-                local_model=ShallowNN(features),
+                local_model=ShallowNN(self.features),
             )
             for id in client_ids
         ]
@@ -167,7 +168,7 @@ class Federation:
 
                 # training the client model for n' epochs
                 client_model, train_loss, validation_loss = client.train(
-                    loss_fn, self.local_rounds, round
+                    self.loss_fn, self.local_rounds, round
                 )
 
                 local_models.append(client_model)
@@ -244,7 +245,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Federated training parameters")
     parser.add_argument("--loss_function", type=str, default="L1Loss")
     parser.add_argument("--log_summary", action="store_true")
-    parser.add_argument("--global_rounds", type=int, default=20)
+    parser.add_argument("--global_rounds", type=int, default=25)
     parser.add_argument("--local_rounds", type=int, default=10)
     parser.add_argument("--save_ckpt", action="store_true")
     args = parser.parse_args()
@@ -259,7 +260,7 @@ if __name__ == "__main__":
     epochs = global_rounds * local_rounds
     save_ckpt = args.save_ckpt
 
-    checkpt_path = f"checkpt/fedl/epoch_{epochs}/{global_rounds}_rounds_{local_rounds}_epochs_per_round/"
+    checkpt_path = f"checkpt/fedl/selected_/epoch_{epochs}/{global_rounds}_rounds_{local_rounds}_epochs_per_round/"
 
     federation = Federation(
         checkpt_path,
@@ -271,7 +272,20 @@ if __name__ == "__main__":
         log_summary,
     )
 
-    client_ids = [f"c{i}" for i in range(1, 25)]
+    # client_ids = [f"c{i}" for i in range(1, 25)]
+    client_ids = [
+        "c5",
+        "c9",
+        "c10",
+        "c12",
+        "c15",
+        "c16",
+        "c17",
+        "c19",
+        "c22",
+        "c23",
+        "c24",
+    ]
 
     print("Federation with clients " + ", ".join(client_ids))
 

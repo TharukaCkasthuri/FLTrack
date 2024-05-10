@@ -37,7 +37,7 @@ class ShallowNN(nn.Module):
     def __init__(self, feats):
         super(ShallowNN, self).__init__()
         self.layer_1 = nn.Linear(feats, 32)
-        self.bn_1 = nn.BatchNorm1d(32)  # Add batch normalization after layer 1
+        self.bn_1 = nn.BatchNorm1d(32)
         self.relu_1 = nn.ReLU()
         self.layer_2 = nn.Linear(32, 16)
         self.relu_2 = nn.ReLU()
@@ -67,8 +67,8 @@ class ShallowNN(nn.Module):
         ------------
         x: torch.tensor object; output data
         """
-        x = self.relu_1(self.bn_1(self.layer_1(inputs)))  # Apply BN after layer 1
-        x = self.relu_2(self.layer_2(x))  # Apply BN after layer 2
+        x = self.relu_1(self.bn_1(self.layer_1(inputs)))
+        x = self.relu_2(self.layer_2(x))
         x = self.layer_3(x)
         return x
 
