@@ -22,6 +22,7 @@ import torch
 import itertools
 
 import pandas as pd
+import numpy as np
 
 from torch.utils.data import Dataset, DataLoader
 
@@ -51,6 +52,80 @@ def load_file(file_path: str) -> pd.DataFrame:
     df.reset_index(inplace=True, drop=True)
 
     return df
+
+
+def remove_outliers(dataframe: pd.DataFrame, column: str) -> pd.DataFrame:
+    """
+    Removes the outliers from the given column.
+
+    Parameters:
+    --------
+    dataframe: pd.DataFrame object
+    column: str; column name
+
+    Returns:
+    --------
+    new_df: pd.DataFrame object
+    """
+
+    percentile25 = dataframe[column].quantile(0.25)
+    percentile75 = dataframe[column].quantile(0.75)
+    iqr = percentile75 - percentile25
+
+    upper_limit = percentile75 + 1.5 * iqr
+    lower_limit = percentile25 - 1.5 * iqr
+
+    new_df = dataframe[dataframe["label"] < upper_limit]
+    new_df = new_df[new_df["label"] > lower_limit]
+
+    return new_df
+
+
+def drop_columns(df: pd.DataFrame) -> None:
+    """
+    Drops the columns with the same values.
+
+    Parameters:
+    --------
+    df: pd.DataFrame object
+
+    Returns:
+    --------
+    None
+    """
+
+    for i in df.columns:
+        if df[i].max() == df[i].min():
+            df.drop(i, axis=1, inplace=True)
+
+
+def update_distribution(
+    original_df: pd.DataFrame, adj_mean: float, adj_std: float, samples: int
+) -> pd.DataFrame:
+    """
+    Updates the distribution of the given dataframe. With weighted sampling based on the z-scores.
+
+    Parameters:
+    --------
+    original_df: pd.DataFrame object
+    adj_mean: float; adjusted mean
+    adj_std: float; adjusted standard deviation
+
+    Returns:
+    --------
+    updated_df: pd.DataFrame object
+    """
+    original_mean = original_df["label"].mean()
+    original_std = original_df["label"].std()
+    desired_mean = original_mean + adj_mean
+    desired_std = original_std * adj_std
+    z_scores = (original_df["label"] - original_mean) / original_std
+    weights = np.exp(
+        -0.5 * ((z_scores - (desired_mean - original_mean) / desired_std) ** 2)
+    )
+    updated_df = original_df.sample(n=samples, replace=False, weights=weights)
+
+    return updated_df
 
 
 def get_device() -> torch.device:
