@@ -49,3 +49,16 @@ python federated_learning.py
 ```bash
 tensorboard --logdir='runs'
 ```
+
+
+If you are using this code please cite this paper;
+
+```
+@inproceedings{Kasthuriarachchige2024,
+  title={Clients Behavior Monitoring in Federated Learning via Eccentricity Analysis},
+  author={Tharuka Kasthuriarachchige and Selim Ickin and Shahrooz Abghari and Veselka Boeva},
+  booktitle={IEEE International Conference on Evolving and Adaptive Intelligent Systems, IEEE EAIS 2024 (23–24 May 2024, Madrid, Spain)},
+  pages={},
+  year={2024}
+}
+```

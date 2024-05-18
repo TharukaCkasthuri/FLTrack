@@ -22,13 +22,28 @@ IEEE EAIS 2024 (23–24 May 2024, Madrid, Spain), 2024]
 import torch
 import time
 import collections
+import itertools
 
 import numpy as np
 
 from typing import Callable
 
-from utils import get_all_possible_pairs
+def get_all_possible_pairs(client_ids: list) -> list:
+    """
+    Returns all possible pairs of client ids.
 
+    Parameters:
+    --------
+    client_ids: list; list of client ids
+
+    Returns:
+    --------
+    pairs: list; list of all possible pairs of client ids
+    """
+
+    pairs = list(itertools.combinations(client_ids, 2))
+
+    return pairs
 
 def pairwise_euclidean_distance(x: torch.tensor, y: torch.tensor) -> torch.tensor:
     """
