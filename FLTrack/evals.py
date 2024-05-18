@@ -324,7 +324,22 @@ def calculate_hessian_flattened(model, loss_fn, data_loader) -> tuple:
 
 def calculate_hessian_flattened_optimized(
     model, loss_fn, data_loader, batch_size=64, device="cpu"
-):
+)-> torch.tensor:
+    """
+    Calculate the Hessian matrix of the model for the given validation set. And flatten the Jacobian matrix.
+
+    Parameters:
+    -------------
+    model: torch.nn.Module object; model to be evaluated
+    loss_fn: torch.nn.Module object; loss function
+    data_loader: torch.utils.data.DataLoader object; validation dataset
+    batch_size: int; batch size
+    device: str; device to be used
+
+    Returns:
+    -------------
+    hessian_matrix: torch.tensor object; Hessian matrix
+    """
     model.eval()
     model.to(device)
 
@@ -551,7 +566,24 @@ def layer_importance_bias(model, loss_fn, data_loader) -> dict:
     return layer_importance_scores
 
 
-def calculate_contribution(local_models, model_layers):
+def calculate_contribution(local_models, model_layers)-> dict:
+    """
+    Calculate the contribution of each local model to the global model.
+
+    Parameters:
+    -------------
+    local_models: list; 
+        List of local models.
+    model_layers: dict; 
+        Dictionary containing the layers of the model.
+    
+    Returns:
+    -------------
+    contributions: dict;
+        Dictionary containing the contributions of each local model.
+    """
+
+
     # Initialize a dictionary to store the contributions
     contributions = {}
 

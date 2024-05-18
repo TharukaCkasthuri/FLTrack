@@ -14,8 +14,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-Paper: [Title of Your Paper]
-Published in: [Journal/Conference Name]
+Paper: [Clients Behavior Monitoring in Federated Learning via Eccentricity Analysis]
+Published in: [IEEE International Conference on Evolving and Adaptive Intelligent Systems,
+IEEE EAIS 2024 (23–24 May 2024, Madrid, Spain), 2024]
 """
 
 import time
@@ -31,55 +32,59 @@ from federated_learning import Federation
 
 if __name__ == "__main__":
     device = get_device()
-    parser = argparse.ArgumentParser(description="Federated training parameters")
-    parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--learning_rate", type=float, default=0.005)
-    parser.add_argument("--loss_function", type=str, default="L1Loss")
-    parser.add_argument("--log_summary", action="store_true")
-    parser.add_argument("--rounds", type=int, default=20)
-    parser.add_argument("--epochs_per_round", type=int, default=25)
+    parser = argparse.ArgumentParser(
+        description="Federated training parameters for Influence calculation"
+    )
+    parser.add_argument("--loss_function", type=str, default="L1Loss", help="Loss function")
+    parser.add_argument("--log_summary", action="store_true", help="Log summary, pass to log")
+    parser.add_argument("--global_rounds", type=int, default=25, help="Number of global rounds")
+    parser.add_argument("--local_rounds", type=int, default=10)
+    parser.add_argument("--save_ckpt", action="store_true", help="Save checkpoint, pass to save checkpoint")
     args = parser.parse_args()
 
-    features = 197
+    features = 169
 
-    # Hyper Parameters
+    # Parameters
     loss_fn = getattr(torch.nn, args.loss_function)()
-    batch_size = args.batch_size
-    learning_rate = args.learning_rate
     log_summary = args.log_summary
-    rounds = args.rounds
-    epochs_per_round = args.epochs_per_round
-    epochs = rounds * epochs_per_round
+    global_rounds = args.global_rounds
+    local_rounds = args.local_rounds
+    epochs = global_rounds * local_rounds
+    save_ckpt = args.save_ckpt
 
-    skips_list = [f"{i}_{j}" for i in range(4) for j in range(6)]
+    skips_list = [f"c{i}" for i in range(1, 25)]
 
     times = []
     for item in skips_list:
-        client_ids = [f"{i}_{j}" for i in range(4) for j in range(6)]
+        client_ids = [f"c{i}" for i in range(1, 25)]
 
-        checkpt_path = f"checkpt/test/epoch_{epochs}/influence/{rounds}_rounds_{epochs_per_round}_epochs_per_round/{item}"
+        checkpt_path = f"checkpt/influence/{item}"
 
-        fed = Federation(
+        federation = Federation(
             checkpt_path,
             features,
             loss_fn,
-            batch_size,
-            learning_rate,
-            rounds,
-            epochs_per_round,
+            global_rounds,
+            local_rounds,
+            save_ckpt,
+            log_summary,
         )
 
+        # Start training
         start = time.time()
 
         try:
             client_ids.remove(item)
         except:
             raise ValueError
+        
+        model = ShallowNN(169)
         print(f"Federation with clients {', '.join(client_ids)}")
-        fed.set_clients(client_ids=client_ids)
-        trained_model, training_stats = fed.train(ShallowNN)
-        fed.save_stats(trained_model, training_stats)
+        federation.set_clients(client_ids=client_ids)
+        trained_model = federation.train(model)
+        model_path = f"{checkpt_path}/global_model.pth"
+        federation.save_models(trained_model.eval(), model_path)
         times.append((time.time() - start))
 
 average_time = sum(times) / len(times)
-print(f"Approximate time taken to train: {average_time:.2f} minutes")
+print(f"Approximate time taken to train all influenced models: {average_time:.2f} minutes")

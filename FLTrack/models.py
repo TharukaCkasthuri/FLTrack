@@ -34,7 +34,7 @@ class ShallowNN(nn.Module):
     feats: int; number of features
     """
 
-    def __init__(self, feats):
+    def __init__(self, feats)-> None:
         super(ShallowNN, self).__init__()
         self.layer_1 = nn.Linear(feats, 32)
         self.bn_1 = nn.BatchNorm1d(32)
@@ -55,7 +55,7 @@ class ShallowNN(nn.Module):
                 init.kaiming_uniform_(layer.weight, mode="fan_in", nonlinearity="relu")
                 init.constant_(layer.bias, 0.0)
 
-    def forward(self, inputs):
+    def forward(self, inputs)-> torch.tensor:
         """
         Forward pass.
 
@@ -71,6 +71,3 @@ class ShallowNN(nn.Module):
         x = self.relu_2(self.layer_2(x))
         x = self.layer_3(x)
         return x
-
-
-### When the feats = 197,

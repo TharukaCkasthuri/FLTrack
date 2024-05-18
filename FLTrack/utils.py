@@ -14,8 +14,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-Paper: [Title of Your Paper]
-Published in: [Journal/Conference Name]
+Paper: [Clients Behavior Monitoring in Federated Learning via Eccentricity Analysis]
+Published in: [IEEE International Conference on Evolving and Adaptive Intelligent Systems,
+IEEE EAIS 2024 (23–24 May 2024, Madrid, Spain), 2024]
 """
 
 import torch
@@ -24,7 +25,7 @@ import itertools
 import pandas as pd
 import numpy as np
 
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 
 
 def load_file(file_path: str) -> pd.DataFrame:
@@ -199,7 +200,7 @@ class CustomDataSet(Dataset):
         """
         return self.x_train[idx], self.y_train[idx]
 
-    def get_subset(self, start_index, end_index):
+    def get_subset(self, start_index, end_index)-> tuple:
         """
         Returns a subset of the dataset based on the specified range.
 

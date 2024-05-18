@@ -272,21 +272,8 @@ if __name__ == "__main__":
         log_summary,
     )
 
-    # client_ids = [f"c{i}" for i in range(1, 25)]
-    client_ids = [
-        "c5",
-        "c9",
-        "c10",
-        "c12",
-        "c15",
-        "c16",
-        "c17",
-        "c19",
-        "c22",
-        "c23",
-        "c24",
-    ]
-
+    client_ids = [f"c{i}" for i in range(1, 25)]
+    
     print("Federation with clients " + ", ".join(client_ids))
 
     start = time.time()
