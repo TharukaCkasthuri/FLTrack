@@ -30,25 +30,17 @@ python isolated_learning.py --batch_size 64 --epochs 50 --learning_rate 0.005 --
 The script is for federated learning to train machine learning models across multiple clients. It includes parameters for configuring the federated training process.
 
 ```bash
-python federated_learning.py 
+python FLTrack/federated_learning.py --save_ckpt
 ```
 
 **Params:**
-- `batch_size` (int): Batch size used during training. (Default: 64)
-- `learning_rate`(float): Learning rate for the optimization algorithm. (Default: 0.005)
+
+
 - `loss_function` (string): The loss function used to measure the model's performance. (Default: "L1Loss")
 - `log_summary` (bool): If set, the script will generate a summary log.
-- `rounds` (int): Number of federated training rounds. (Default: 20)
-- `epochs_per_round` (int): Number of training epochs per federated round. (Default: 25)
+- `global_rounds` (int): Number of federated training rounds. (Default: 25)
+- `local_rounds` (int): Number of training epochs per federated round. (Default: 10)
 - `save_ckpt` (bool): If set, the script will save checkpoints during training.
-
-
-
-## Loading the tensorboard
-
-```bash
-tensorboard --logdir='runs'
-```
 
 
 If you are using this code please cite this paper;
