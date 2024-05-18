@@ -144,24 +144,6 @@ def get_device() -> torch.device:
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def get_all_possible_pairs(client_ids: list) -> list:
-    """
-    Returns all possible pairs of client ids.
-
-    Parameters:
-    --------
-    client_ids: list; list of client ids
-
-    Returns:
-    --------
-    pairs: list; list of all possible pairs of client ids
-    """
-
-    pairs = list(itertools.combinations(client_ids, 2))
-
-    return pairs
-
-
 class CustomDataSet(Dataset):
     """
     Custom dataset class for the training and validation dataset.
